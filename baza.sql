@@ -1,4 +1,4 @@
--- Arkusz 1.1.1 — kompletny schemat bazy, rewizja 3.
+-- Arkusz 1.2.0 — kompletny schemat bazy, rewizja 4.
 -- Historia zastosowania jest zapisywana przez wersjonowane migracje aplikacji.
 -- Uruchamiać w wybranej, pustej bazie danych. Celowo bez DROP TABLE.
 -- Wszystkie daty i godziny aplikacja zapisuje w UTC.
@@ -9,16 +9,20 @@
 SET NAMES utf8mb4;
 
 CREATE TABLE users (
+    version INT UNSIGNED NOT NULL DEFAULT 1,
+    auth_version INT UNSIGNED NOT NULL DEFAULT 1,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     login VARCHAR(100) NOT NULL UNIQUE,
     display_name VARCHAR(200) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     theme ENUM('green', 'beige', 'gray', 'black', 'beige_light') NOT NULL DEFAULT 'green',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_users_active_name (is_active,display_name,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE customers (
+    version INT UNSIGNED NOT NULL DEFAULT 1,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     tax_id VARCHAR(32),
@@ -30,7 +34,10 @@ CREATE TABLE customers (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_customers_name (name),
-    INDEX idx_customers_tax_id (tax_id)
+    INDEX idx_customers_tax_id (tax_id),
+    INDEX idx_customers_active_name (is_active,name,id),
+    INDEX idx_customers_email (email),
+    INDEX idx_customers_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE product_types (

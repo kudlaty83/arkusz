@@ -57,7 +57,7 @@ worker=Client();worker.login(login,password);worker.call('dictionary_catalog',st
 pt=next(e for e in admin.call('dictionary_catalog')['categories']['paper_types']['entries'] if e['id']==created['paper_types'])
 admin.call('dictionary_save',{'category':'paper_types',**pt,'is_active':0})
 item={'name':'TEST nieaktywny papier','product_type_id':b['dictionaries']['product_types'][0]['id'],'quantity':1,'finished_width_mm':90,'finished_height_mm':50,'components':[{'name':'Całość','paper_variant_id':created['paper_variants'],'page_count':2,'print_technique':'digital','digital_front_mode':'bw','digital_back_mode':'none'}]}
-admin.call('create_order',{'customer_id':b['customers'][0]['id'],'title':'TEST nieaktywny','items':[item]},status=422)
+admin.call('create_order',{'customer_id':admin.call('customer',{'name':'TEST papier klient '+tag})['id'],'title':'TEST nieaktywny','items':[item]},status=422)
 # Typ parametru z zapisanymi wartościami i zakres używanej cechy są chronione.
 used=b['dictionaries']['feature_parameter_definitions'][0]
 admin.call('dictionary_save',{'category':'feature_parameter_definitions',**used,'value_type':'number'},status=422)

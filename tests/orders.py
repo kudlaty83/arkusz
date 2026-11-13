@@ -77,6 +77,11 @@ p['items'].append(new);save(p);new_id=detail()['items'][1]['id']
 new_task=admin.call('create_task',{**base_task,'order_item_id':new_id,'component_id':detail()['items'][1]['components'][0]['id'],'planned_quantity':7})['id']
 p=payload(order);p['items'].pop();save(p);assert len(detail()['items'])==1 and task(new_task)['status']=='cancelled'
 p=payload(order);removed_component=p['items'][0]['components'][0]['id'];p['items'][0]['components'].pop(0);save(p);assert all(c['id']!=removed_component for c in detail()['items'][0]['components']);assert task(first)['status']=='done'
+# Edycja kartoteki klienta po podglądzie również wymaga ponownego zatwierdzenia.
+p=payload(order);v=preview(p);customer=admin.call('customer&id='+str(p['customer_id']))
+admin.call('update_customer',{**customer,'phone':'TEST konflikt kartoteki'})
+admin.call('update_order',{**p,'confirmation_token':v['confirmation_token']},status=409)
+save(p)
 # Usunięcie terminu obejmuje niezakończone zadania i nie usuwa raportów.
 p=payload(order);p['due_at']='';save(p)
 assert detail()['order']['due_at'] is None

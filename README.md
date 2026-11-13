@@ -1,10 +1,10 @@
-# Arkusz 1.1 — obsługa drukarni
+# Arkusz 1.2 — obsługa drukarni
 
 Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pracy drukarni: od ustaleń z klientem, przez przygotowalnię i druk, po introligatornię i wydanie. Interfejs jest w języku polskim. Aplikacja działa jako strona internetowa i może być instalowana w Chrome jako PWA.
 
 **Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
 
-Aktualna wersja testowa: **1.1.1**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.1**. Schemat bazy: **rewizja 3**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
+Aktualna wersja testowa: **1.2.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.2**. Schemat bazy: **rewizja 4**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
 **Instalacja, pierwsze logowanie, kopie zapasowe i aktualizacje: [install.md](install.md).**
 
@@ -18,6 +18,12 @@ Aktualna wersja testowa: **1.1.1**. Numer wersji nie oznacza gotowości produkcy
 - Offset: 0–5 kolorów na stronę, z nazwami farb, np. CMYK i Pantone; co najmniej jedna strona zadrukowana.
 - Cyfra: BW, pełny kolor lub brak druku, niezależnie dla obu stron.
 - Osobne, wielowierszowe dodatkowe informacje do zamówienia, produktu i części oraz notatki wewnętrzne zamówienia.
+
+## Klienci
+
+Zakładka **Klienci** pozwala dodawać i edytować nazwę, NIP, e-mail, telefon, adres, uwagi oraz aktywność klienta. Lista ma strony po **10, 25, 50 lub 100 wpisów**, licznik wyników i filtr aktywności. Wyszukiwanie obejmuje początek nazwy, NIP-u, e-maila lub telefonu. Sortowanie po nazwie i identyfikatorze zapewnia stałą kolejność także przy powtarzających się nazwach.
+
+Stronicowanie i wyszukiwanie wykonuje serwer. Aplikacja nie pobiera całej kartoteki przy logowaniu. Również wybór klienta w zamówieniu korzysta z wyszukiwania i stron po 10 wyników; już wybrany klient pozostaje wybrany przy zmianie strony. Nieaktywny klient nie może być wskazany w nowym zamówieniu, ale pozostaje w historii. Edycja kartoteki nie przepisuje migawek danych w istniejących zamówieniach. Równoczesna edycja jest wykrywana przy zapisie.
 
 ## Cechy i uszlachetnienia
 
@@ -36,6 +42,12 @@ Parametry mogą być tekstem, liczbą z jednostką lub wyborem tak/nie. Katalog 
 - Historia statusów zamówienia, raportów i przydziałów wykonawców.
 
 Pracownik produkcyjny raportuje wyłącznie przydzielone mu zadania. BOK i kierownik planują produkcję. Administrator zarządza kontami, rolami i uprawnieniami.
+
+## Konta i hasła
+
+W zakładce **Zespół** administrator dodaje i edytuje pracowników: login, imię i nazwisko, role, stanowiska oraz aktywność. Konta można wyszukiwać i przeglądać stronami; administrator widzi również nieaktywne konta. Wyłączenie konta zachowuje zadania, przydziały i raporty, a blokuje dostęp. Nie można wyłączyć własnego konta ani odebrać roli ostatniemu aktywnemu administratorowi. Zapis wykrywa równoczesną edycję konta.
+
+Każdy użytkownik ma opcję **Zmień moje hasło** w panelu bocznym. Podaje obecne hasło i dwukrotnie nowe. Bieżąca sesja pozostaje aktywna, a pozostałe sesje wygasają. Administrator może **Ustawić nowe hasło** innemu pracownikowi w zakładce Zespół; powoduje to wygaśnięcie wszystkich sesji tego konta. Wyłączenie i ponowne włączenie konta nie przywraca wcześniejszych sesji. Hasła są przechowywane jako skróty, a API nie zwraca ich ani ich skrótów.
 
 ## Edycja i historia
 

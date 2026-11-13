@@ -40,6 +40,7 @@ async def main():
   await js("document.querySelector('[data-add-component]').click();document.querySelector('[data-add-component-feature]').click();")
   assert await js("document.querySelectorAll('[data-component]').length") == 2
   assert await js("document.querySelectorAll('[data-param]').length") == 4
+  await wait("!!document.querySelector('#customer-select option[value]:not([value=\"\"])') && !!document.querySelector('#customer-select').value")
   # Przejście przez prawdziwy formularz nowego zamówienia.
   await js("document.querySelector('[name=title]').value='TEST Chrome '+"+json.dumps(secrets.token_hex(3))+";document.querySelector('[data-item-key=name]').value='Wizytówki z formularza';document.querySelector('[data-param=kind]').value='Tłoczenie wypukłe';document.querySelector('#order-form').requestSubmit();")
   await wait("!document.querySelector('#modal').open && location.hash.startsWith('#order/') && !!document.querySelector('[data-new-task]')")
@@ -126,7 +127,7 @@ async def main():
   # Preferencje wyglądu: podgląd, anulowanie, zapis i odtworzenie po odświeżeniu.
   await js("document.querySelector('#about-version').click()")
   await wait("document.querySelector('#modal').open")
-  assert await js("document.querySelector('#modal-body').textContent.includes('1.1.1') && /13\\.\\d+\\.\\d+/.test(document.querySelector('#modal-body').textContent) && /8\\.4\\.\\d+/.test(document.querySelector('#modal-body').textContent)")
+  assert await js("document.querySelector('#modal-body').textContent.includes('1.2.0') && /13\\.\\d+\\.\\d+/.test(document.querySelector('#modal-body').textContent) && /8\\.4\\.\\d+/.test(document.querySelector('#modal-body').textContent)")
   await js("document.querySelector('#modal').close()")
   original_theme=await js("state.data.user.theme")
   await cmd('Emulation.setDeviceMetricsOverride',{'width':1440,'height':1000,'deviceScaleFactor':1,'mobile':False})

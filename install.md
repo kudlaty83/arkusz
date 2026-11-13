@@ -1,4 +1,4 @@
-# Instalacja i aktualizacja Arkusza 1.1
+# Instalacja i aktualizacja Arkusza 1.2
 
 Instrukcja dla osoby uruchamiającej własną drukarnię w aplikacji. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
 
@@ -58,7 +58,7 @@ docker compose exec web cat /run/arkusz-secrets/admin-password
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.1.1, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.2.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -127,6 +127,14 @@ docker compose up -d --build --wait
 
 Adres będzie wtedy **http://localhost:8081**. Dla wielu instalacji ustaw osobne `APP_DATA_DIR`, porty oraz nazwy projektów (`docker compose -p nazwa ...`). Sama zmiana `-p` nie zmienia wskazanego katalogu danych. Zawsze używaj tego samego `APP_DATA_DIR`; wskazanie pustej lokalizacji oznacza nową instalację. Przenosząc katalog, zatrzymaj wszystkie usługi i przenieś całość z zachowaniem właścicieli i uprawnień.
 
+## Zarządzanie klientami, kontami i hasłami
+
+W **Klienci** wyszukuj po początku nazwy, NIP-u, e-maila lub telefonu, wybieraj liczbę wpisów na stronie i używaj przycisku **Edytuj**. Wyłączenie klienta zachowuje wcześniejsze zamówienia. W formularzu zamówienia klienta wybiera się z wyszukiwanych, stronicowanych wyników.
+
+Administrator edytuje konta w **Zespół → Edytuj konto**. Może zmienić login, role, stanowiska, dane i aktywność. **Ustaw nowe hasło** służy do zmiany hasła innej osoby. Każdy pracownik ma w panelu bocznym opcję **Zmień moje hasło**, która wymaga obecnego hasła i dwukrotnego podania nowego. Hasło musi mieć co najmniej 12 znaków; maksymalna długość to 72 bajty UTF-8 (polskie znaki mogą zajmować więcej niż jeden bajt).
+
+Plik `config/admin-password` przechowuje pierwsze hasło z inicjalizacji. Po zmianie hasła w aplikacji zawartość tego pliku nie jest aktualizowana i nie służy do resetowania konta. Po zmianie własnego hasła pozostałe sesje konta wygasają; po zmianie przez administratora wygasają wszystkie sesje wskazanego pracownika. Nie można wyłączyć siebie ani pozbawić dostępu ostatniego administratora.
+
 ## Dostęp z innych urządzeń i instalacja na telefonie
 
 Domyślna konfiguracja wystawia aplikację wyłącznie na `127.0.0.1`, a baza nie wystawia portu na komputerze. To instalacja lokalna.
@@ -193,6 +201,8 @@ Nie wykonuj tego na działającej bazie z danymi, które chcesz zachować. Użyj
 Używane będą konta i hasła zapisane w kopii. Po odtworzeniu sprawdź zamówienia, role i możliwość logowania.
 
 ## Aktualizacja
+
+Wersja 1.2.0 wykonuje migrację 0004 do schematu 4: dodaje wersje klientów i kont, licznik sesji oraz indeksy. Zachowuje konta, hasła, zamówienia i przydziały. Dotychczasowych plików migracji nie należy zmieniać.
 
 Wersja 1.1.1 poprawia start kontenera z katalogiem aplikacji tylko do odczytu: obraz i usługi PHP wskazują `working_dir: /var/www`. Migracja 0003 waliduje zgodność schematu i rejestruje wydanie; nie zmienia struktury ani danych użytkowych. API pozostaje w wersji 1.1.
 

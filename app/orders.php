@@ -25,10 +25,11 @@ function syncFeatures(int $item,?int $component,array $features): void {
 function saveOrder(array $data,bool $editing,int $userId,bool $preview=false): int|array {
   permit('orders.edit');
   if(empty($data['items'])||!is_array($data['items'])||count($data['items'])>50) fail('Dodaj od 1 do 50 produktów.');
-  $customer=reference('customers',integer($data,'customer_id')); $title=text($data,'title');
+  $customerId=integer($data,'customer_id'); $title=text($data,'title');
   $due=text($data,'due_at',16,false); if($due!=='' && (!DateTime::createFromFormat('!Y-m-d\TH:i',$due) || DateTime::createFromFormat('!Y-m-d\TH:i',$due)->format('Y-m-d\TH:i')!==$due)) fail('Nieprawidłowy termin.');
   $priority=$data['priority']??'normal';if(!in_array($priority,['low','normal','high','urgent'],true)) fail('Nieprawidłowy priorytet.');
   db()->beginTransaction();
+  $customer=one('SELECT * FROM customers WHERE id=? FOR UPDATE',[$customerId])??fail('Brak klienta.',404);
   $previous=null;
   if($editing){
    $id=integer($data,'id');
@@ -37,13 +38,15 @@ function saveOrder(array $data,bool $editing,int $userId,bool $preview=false): i
    $snapshot=orderPlanSnapshot($id);$plan=buildOrderPlan($snapshot,$data);
    if($plan['tasks'])permit('tasks.manage');
    $specification=$data;unset($specification['confirmation_token']);
-   $fingerprint=hash('sha256',json_encode([$specification,$snapshot,$plan],JSON_THROW_ON_ERROR));
+   $fingerprint=hash('sha256',json_encode([$specification,$snapshot,$plan,$customer],JSON_THROW_ON_ERROR));
    if(!$preview){
     $approval=$_SESSION['order_plan_approval'][$id]??null;
     if(!$approval||!hash_equals($approval['token'],(string)($data['confirmation_token']??''))||!hash_equals($approval['fingerprint'],$fingerprint)||$approval['expires']<time())fail('Plan lub formularz zmienił się od podglądu. Sprawdź ponownie podsumowanie i zatwierdź zmiany.',409);
    }
 
   }
+
+  if(!(int)$customer['is_active']&&(!$previous||(int)$previous['customer_id']!==(int)$customer['id']))fail('Wybierz aktywnego klienta.');
 
   $status=one("SELECT id FROM order_statuses WHERE code='new'")['id'];
   $header=['order_number'=>'TMP-'.bin2hex(random_bytes(12)),'customer_id'=>$customer['id'],'customer_name'=>$customer['name'],'customer_tax_id'=>$customer['tax_id'],'customer_address'=>$customer['address_text'],'contact_name'=>text($data,'contact_name',200,false),'contact_email'=>text($data,'contact_email',254,false)?:($editing?'':$customer['email']),'contact_phone'=>text($data,'contact_phone',50,false)?:($editing?'':$customer['phone']),'title'=>$title,'status_id'=>$status,'priority'=>$priority,'due_at'=>$due?str_replace('T',' ',$due).':00':null,'internal_notes'=>text($data,'internal_notes',10000,false),'created_by'=>$userId,'customer_notes'=>text($data,'customer_notes',10000,false)];

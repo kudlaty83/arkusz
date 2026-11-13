@@ -18,7 +18,7 @@ def health(expected):
  except urllib.error.HTTPError as e:code=e.code
  assert code==expected,(code,expected)
 counts=php('require "/var/www/db.php";echo json_encode([one("SELECT COUNT(*) n FROM orders"),one("SELECT COUNT(*) n FROM users"),one("SELECT COUNT(*) n FROM production_reports")]);')
-baseline=root/'migrations/0001_baseline.php';original=baseline.read_bytes();release=root/'release.json';original_release=release.read_bytes();current=json.loads(original_release);next_version=int(current['schema_version'])+1;next_release_version='1.1.2';fixture=root/f'migrations/{next_version:04d}_test.php'
+baseline=root/'migrations/0001_baseline.php';original=baseline.read_bytes();release=root/'release.json';original_release=release.read_bytes();current=json.loads(original_release);next_version=int(current['schema_version'])+1;next_release_version='1.2.1';fixture=root/f'migrations/{next_version:04d}_test.php'
 migrate();migrate();health(200)
 try:
  baseline.write_bytes(original+b'\n// Zmieniony zastosowany plik testowy.\n');migrate(False);health(503)

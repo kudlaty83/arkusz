@@ -2,6 +2,19 @@
 
 **Arkusz jest aplikacją testową i prototypową, powstałą w większości z użyciem generatywnej AI. Nie jest kompletnym programem dla drukarni. Projekt stanowi zaproszenie do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju; numer 1.0.0 nie oznacza gotowości produkcyjnej.**
 
+## 1.2.0 — 2026-11-13
+
+Wydanie testowe. Program: **1.2.0**; API: **1.2**; schemat: **rewizja 4**. Obrazy: PHP `8.4-apache`, MariaDB `13`.
+
+- Edytor klientów z adresem, kontaktami, NIP-em, uwagami i aktywnością. Zapis chroniony wersją rekordu; migawki klientów w przyjętych zamówieniach pozostają bez zmian.
+- Strony po 10/25/50/100 wpisów, licznik wyników, filtr aktywności i wyszukiwanie prefiksów po stronie serwera. Stabilne sortowanie po nazwie i ID. Bootstrap nie zawiera pełnej listy klientów; wybór w zamówieniu pobiera po 10 wyników, zachowując dotychczasowy wybór.
+- Edycja loginu, danych, ról, stanowisk i aktywności pracownika. Stronicowana lista kont, także nieaktywnych dla administratora. Zachowanie przydziałów i raportów, ochrona ostatniego administratora i zakaz wyłączania własnego konta.
+- Zmiana własnego hasła z weryfikacją obecnego, ustawienie hasła innego konta przez administratora i unieważnianie sesji. Hasła od 12 znaków, do 72 bajtów UTF-8; przekroczenie limitu jest odrzucane zamiast obcinania. Pola haseł i skróty nie są zwracane przez API.
+- Migracja `0004_customers_users.php`: wersje rekordów klientów i kont, licznik sesji oraz indeksy wyszukiwania i sortowania. Istniejące dane i hasła pozostają bez zmian; dotychczasowe sesje zachowują ważność do zmiany danych uwierzytelniających lub wyłączenia konta.
+- API: stronicowane `GET customers` i `GET users` (`page`, `page_size`, `q`, `active`), pojedynczy `GET customer&id=…` i administratorski `GET user&id=…`; zapisy `POST update_customer`, `update_user`, `change_password`, `reset_password`. Edycje wymagają wersji rekordu. Dotychczasowe `POST customer` i `create_user` nadal tworzą rekordy. Integracje pobierają klientów przez paginowany endpoint zamiast `bootstrap.customers`.
+
+Aktualizacja z 1.1.1: kopia bazy i konfiguracji, zatrzymanie WWW, przebudowanie i start Compose według `install.md`. Migracja dodaje kolumny z wartością 1 oraz indeksy; nie resetuje kont, zamówień ani haseł. Powrót do wcześniejszego wydania wymaga odtworzenia zweryfikowanej kopii bazy i konfiguracji wraz z odpowiednimi źródłami — schema 4 blokuje starszy program.
+
 ## 1.1.1 — 2026-11-13
 
 Wydanie testowe. Program: **1.1.1**; API: **1.1**; schemat: **rewizja 3**. Obrazy: PHP `8.4-apache`, MariaDB `13`.

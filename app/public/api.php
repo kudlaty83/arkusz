@@ -58,6 +58,8 @@ function feature(int $item,?int $component,array $f): int {
 require dirname(__DIR__).'/dictionaries.php';
 require dirname(__DIR__).'/orders.php';
 require dirname(__DIR__).'/order-plan.php';
+require dirname(__DIR__).'/customers.php';
+require dirname(__DIR__).'/users.php';
 function taskAccess(array $task): void {
  if(allowed('tasks.manage')) return;
  if(!one('SELECT 1 FROM task_assignments WHERE task_id=? AND user_id=?',[$task['id'],$_SESSION['uid']])) fail('Możesz raportować tylko przydzielone zadania.',403);
@@ -76,11 +78,12 @@ try {
   if(count($attempts)>=10) fail('Zbyt wiele prób. Spróbuj za pięć minut.',429);
   $u=one('SELECT * FROM users WHERE login=? AND is_active=1',[text($data,'login',100)]);
   if(!$u || !password_verify((string)($data['password']??''),$u['password_hash'])) { $attempts[]=time(); $_SESSION['login_attempts']=$attempts; fail('Nieprawidłowy login lub hasło.',401); }
-  session_regenerate_id(true); $_SESSION=['uid'=>(int)$u['id'],'csrf'=>bin2hex(random_bytes(32))]; output(['ok'=>true]);
+  session_regenerate_id(true); $_SESSION=['uid'=>(int)$u['id'],'auth_version'=>(int)$u['auth_version'],'csrf'=>bin2hex(random_bytes(32))]; output(['ok'=>true]);
  }
  if(empty($_SESSION['uid'])) fail('Zaloguj się, aby kontynuować.',401);
- $user=one('SELECT id,login,display_name,theme FROM users WHERE id=? AND is_active=1',[$_SESSION['uid']]);
- if(!$user) {session_destroy(); fail('Konto jest nieaktywne.',401);}
+ $user=one('SELECT id,login,display_name,theme,auth_version FROM users WHERE id=? AND is_active=1',[$_SESSION['uid']]);
+ if(!$user||(int)($_SESSION['auth_version']??1)!==(int)$user['auth_version']) {$_SESSION=[];session_destroy();fail('Sesja wygasła lub konto zostało wyłączone. Zaloguj się ponownie.',401);}
+ unset($user['auth_version']);
  $_SESSION['permissions']=array_column(rows('SELECT DISTINCT p.code FROM permissions p JOIN role_permissions rp ON rp.permission_id=p.id JOIN user_roles ur ON ur.role_id=rp.role_id WHERE ur.user_id=?',[$user['id']]),'code');
  if($method==='POST' && !hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??'')) fail('Sesja formularza wygasła. Odśwież stronę.',403);
  if($action==='logout' && $method==='POST') { $_SESSION=[];session_destroy();output(['ok'=>true]); }
@@ -102,7 +105,7 @@ try {
   $dict=[]; foreach(['product_types','paper_types','paper_variants','order_statuses','work_centers','operation_types','feature_types','feature_parameter_definitions','roles'] as $table) $dict[$table]=rows("SELECT * FROM $table".($table==='order_statuses'?' ORDER BY sort_order,id':' ORDER BY id'));
   output(['versions'=>versionInfo(),'user'=>$user,'permissions'=>$_SESSION['permissions'],'csrf'=>$_SESSION['csrf'],'dictionaries'=>$dict,
    'users'=>rows('SELECT u.id,u.display_name,u.login,GROUP_CONCAT(r.name SEPARATOR ", ") roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id WHERE u.is_active=1 GROUP BY u.id,u.display_name,u.login'),
-   'memberships'=>rows('SELECT * FROM user_work_centers'),'customers'=>rows('SELECT * FROM customers WHERE is_active=1 ORDER BY name')]);
+   'memberships'=>rows('SELECT * FROM user_work_centers')]);
  }
  if($action==='orders' && $method==='GET') {
   permit('orders.view');
@@ -137,8 +140,14 @@ try {
    'reports'=>rows('SELECT r.*,t.operation_name,u.display_name FROM production_reports r JOIN production_tasks t ON t.id=r.task_id JOIN order_items i ON i.id=t.order_item_id JOIN users u ON u.id=r.reported_by WHERE i.order_id=? ORDER BY r.id DESC',[$order['id']]),
    'task_history'=>rows('SELECT h.*,t.operation_name,u.display_name FROM task_status_history h JOIN production_tasks t ON t.id=h.task_id JOIN order_items i ON i.id=t.order_item_id JOIN users u ON u.id=h.changed_by WHERE i.order_id=? ORDER BY h.id DESC',[$order['id']])]);
  }
- if($action==='customer' && $method==='POST') {
-  permit('orders.edit'); $id=insert('customers',['name'=>text($data,'name'),'tax_id'=>text($data,'tax_id',32,false),'email'=>text($data,'email',254,false),'phone'=>text($data,'phone',50,false),'address_text'=>text($data,'address_text',5000,false)]);output(['id'=>$id]);
+ if($action==='customers' && $method==='GET')output(customerPage($_GET));
+ if($action==='customer' && $method==='GET'){permit('orders.view');output(reference('customers',integer($_GET,'id')));}
+ if(in_array($action,['customer','update_customer'],true) && $method==='POST')output(['id'=>saveCustomer($data,$action==='update_customer')]);
+ if($action==='users' && $method==='GET')output(userPage($_GET));
+ if($action==='user' && $method==='GET'){permit('users.manage');output(userDetails(integer($_GET,'id')));}
+ if(in_array($action,['create_user','update_user'],true) && $method==='POST')output(['id'=>saveUser($data,$action==='update_user',(int)$user['id'])]);
+ if(in_array($action,['change_password','reset_password'],true) && $method==='POST'){
+  changePassword($data,(int)$user['id'],$action==='reset_password');output(['ok'=>true,'csrf'=>$_SESSION['csrf']]);
  }
  if($action==='preview_order_update' && $method==='POST')output(saveOrder($data,true,(int)$user['id'],true));
  if(in_array($action,['create_order','update_order'],true) && $method==='POST') output(['id'=>saveOrder($data,$action==='update_order',(int)$user['id'])]);
@@ -187,12 +196,6 @@ try {
   insert('production_reports',['task_id'=>$t['id'],'plan_revision'=>$t['plan_revision'],'reported_by'=>$user['id'],'good_quantity'=>$good,'waste_quantity'=>$waste,'work_minutes'=>$minutes,'status_after'=>$status,'notes'=>$notes]);
   run("UPDATE production_tasks SET status=?,version=version+1,started_at=IF(?='in_progress',COALESCE(started_at,UTC_TIMESTAMP()),started_at),finished_at=IF(?='done',UTC_TIMESTAMP(),NULL) WHERE id=?",[$status,$status,$status,$t['id']]);
   insert('task_status_history',['task_id'=>$t['id'],'old_status'=>$t['status'],'new_status'=>$status,'changed_by'=>$user['id'],'reason'=>$notes]);db()->commit();output(['ok'=>true]);
- }
- if($action==='create_user' && $method==='POST') {
-  permit('users.manage');db()->beginTransaction();$password=(string)($data['password']??'');if(strlen($password)<12)fail('Hasło musi mieć co najmniej 12 znaków.');
-  $uid=insert('users',['login'=>text($data,'login',100),'display_name'=>text($data,'display_name',200),'password_hash'=>password_hash($password,PASSWORD_DEFAULT)]);
-  if(empty($data['role_ids']))fail('Wybierz rolę.');foreach(array_unique($data['role_ids']) as $rid){activeReference('roles',(int)$rid);insert('user_roles',['user_id'=>$uid,'role_id'=>(int)$rid]);}
-  foreach(array_unique($data['work_center_ids']??[]) as $cid){activeReference('work_centers',(int)$cid);insert('user_work_centers',['user_id'=>$uid,'work_center_id'=>(int)$cid]);}db()->commit();output(['id'=>$uid]);
  }
  fail('Nieznana operacja.',404);
 } catch(PDOException $e) {

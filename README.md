@@ -4,7 +4,7 @@ Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pra
 
 **Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
 
-Aktualna wersja testowa: **1.1.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.1**. Schemat bazy: **rewizja 2**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
+Aktualna wersja testowa: **1.1.1**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.1**. Schemat bazy: **rewizja 3**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
 **Instalacja, pierwsze logowanie, kopie zapasowe i aktualizacje: [install.md](install.md).**
 

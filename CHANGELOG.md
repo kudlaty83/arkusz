@@ -2,6 +2,16 @@
 
 **Arkusz jest aplikacją testową i prototypową, powstałą w większości z użyciem generatywnej AI. Nie jest kompletnym programem dla drukarni. Projekt stanowi zaproszenie do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju; numer 1.0.0 nie oznacza gotowości produkcyjnej.**
 
+## 1.1.1 — 2026-11-13
+
+Wydanie testowe. Program: **1.1.1**; API: **1.1**; schemat: **rewizja 3**. Obrazy: PHP `8.4-apache`, MariaDB `13`.
+
+- Jawny katalog roboczy `/var/www` w obrazie oraz usługach `setup` i `web`. Usuwa konflikt odziedziczonego `/var/www/html` z montowaniem katalogu aplikacji tylko do odczytu przy uruchamianiu przez Docker/runc.
+- Test uruchomienia PHP z katalogiem `/var/www` tylko do odczytu, bez podkatalogu `html`, oraz kontrola katalogu roboczego uruchomionej usługi.
+- Migracja `0003_container_workdir.php` waliduje istniejący schemat bez DDL i aktualizuje rejestr wydania. Dotychczasowe migracje pozostają niezmienione.
+
+Aktualizacja z 1.1.0: zachowaj `APP_DATA_DIR`, wykonaj kopię bazy i konfiguracji, zatrzymaj WWW i przebuduj obrazy zgodnie z `install.md`. W razie wycofania odtwórz kopię bazy i konfiguracji wraz ze źródłami poprzedniego wydania; schemat 3 blokuje start starszego programu. Doraźnie w starszej instalacji wystarczy `working_dir: /var/www` w usłudze `web` i odtworzenie jej kontenera.
+
 ## 1.1.0 — 2026-11-13
 
 Wydanie testowe. Program: **1.1.0**; API: **1.1**; schemat: **rewizja 2**. Obrazy: PHP `8.4-apache`, MariaDB `13`.

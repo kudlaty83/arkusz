@@ -35,3 +35,5 @@ ARKUSZ_ALLOW_TEST_DATA=1 ARKUSZ_TEST_URL=http://127.0.0.1:18080 python3 tests/sm
 Pełne testy przeglądarkowe zakładają demonstracyjny produkt z etapami w izolowanej kopii bazy; nie uruchamiaj ich na nowej pustej instalacji. Świeża instalacja tworzy jedynie administratora i słowniki.
 
 Wydanie 1.1: `orders.py` testuje podgląd bez utrwalania zmian, wymagane potwierdzenie, konflikty z raportem i nowym zadaniem, proporcjonalne ilości, terminy, rewizje wykonania, archiwizację i anulowanie następników. `browser.py` obejmuje podgląd, powrót do edycji i potwierdzenie. `migrations.py` dobiera kolejny numer testowej migracji względem bieżącego wydania.
+
+Wydanie 1.1.1: po zbudowaniu obrazu uruchom `python3 tests/container_workdir.py` (Podman) lub `python3 tests/container_workdir.py --engine docker`. Test montuje wyłącznie tymczasowy katalog bez `html`, tylko do odczytu, i uruchamia PHP bez bazy i sieci. Opcja `--runtime runc` umożliwia sprawdzenie konkretnego środowiska OCI. `compose.py` dodatkowo sprawdza katalog roboczy usług PHP i działającego serwera.

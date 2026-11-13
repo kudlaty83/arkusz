@@ -58,7 +58,7 @@ docker compose exec web cat /run/arkusz-secrets/admin-password
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.1.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.1.1, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -194,6 +194,8 @@ Używane będą konta i hasła zapisane w kopii. Po odtworzeniu sprawdź zamówi
 
 ## Aktualizacja
 
+Wersja 1.1.1 poprawia start kontenera z katalogiem aplikacji tylko do odczytu: obraz i usługi PHP wskazują `working_dir: /var/www`. Migracja 0003 waliduje zgodność schematu i rejestruje wydanie; nie zmienia struktury ani danych użytkowych. API pozostaje w wersji 1.1.
+
 Wersja 1.1.0 aktualizuje instalację 1.0 migracją 0002 do schematu 2, zachowując konta, zamówienia, przydziały i raporty. Dotychczasowe zadania i raporty należą do rewizji planu 1. Po aktualizacji edycja wymaga podglądu i osobnego potwierdzenia zmian. Szczegółowe reguły przeliczania opisuje [README.md](README.md#edycja-i-historia).
 
 Zrób kopię bazy i haseł. Pobierz nową wersję źródeł do tego samego katalogu, zachowując cały `app_data` i opcjonalny `.env`. Zatrzymaj serwer WWW na czas aktualizacji schematu:
@@ -242,6 +244,7 @@ docker compose ps -a
 docker compose logs --tail=100 setup db web
 ```
 
+- **Błąd `mkdir /var/www/html: read-only file system`:** starszy obraz PHP dziedziczy katalog roboczy `/var/www/html`, którego nie ma w zamontowanej aplikacji. Dodaj `working_dir: /var/www` w usłudze `web` (na poziomie `image`), a następnie wykonaj `docker compose up -d --no-deps --force-recreate web`. Trwała poprawka znajduje się w wydaniu 1.1.1; po dostarczeniu jego źródeł przebuduj obraz według instrukcji aktualizacji. Nie trzeba zmieniać adresu IP ani uprawnień montowania aplikacji.
 - **Brak połączenia z Dockerem:** uruchom Docker Desktop lub usługę silnika Docker.
 - **Zajęty port:** zmień `APP_PORT` i uruchom ponownie.
 - **Baza nie przechodzi testu gotowości:** zajrzyj do logów `db`; sprawdź miejsce na dysku i zachowanie właściwego katalogu `config` z hasłami.

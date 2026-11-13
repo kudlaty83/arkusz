@@ -1,4 +1,4 @@
--- Arkusz 1.1.0 — kompletny schemat bazy, rewizja 2.
+-- Arkusz 1.1.1 — kompletny schemat bazy, rewizja 3.
 -- Historia zastosowania jest zapisywana przez wersjonowane migracje aplikacji.
 -- Uruchamiać w wybranej, pustej bazie danych. Celowo bez DROP TABLE.
 -- Wszystkie daty i godziny aplikacja zapisuje w UTC.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Start obrazu z niezmiennym katalogiem aplikacji bez dawnego /var/www/html."""
 import argparse,pathlib,shlex,subprocess,tempfile
-p=argparse.ArgumentParser();p.add_argument('--engine',default='podman');p.add_argument('--image',default='localhost/arkusz-app:1.3.0');p.add_argument('--runtime');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--engine',default='podman');p.add_argument('--image',default='localhost/arkusz-app:1.4.0');p.add_argument('--runtime');args=p.parse_args()
 with tempfile.TemporaryDirectory(prefix='arkusz-workdir-') as tmp:
  root=pathlib.Path(tmp);root.chmod(0o755);(root/'public').mkdir();(root/'public/index.html').write_text('Test startu kontenera')
  code='''if(getcwd()!=="/var/www"||is_dir("/var/www/html"))exit(1);

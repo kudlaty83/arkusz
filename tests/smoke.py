@@ -36,7 +36,9 @@ base_task={'order_item_id':it['id'],'component_id':it['components'][0]['id'],'op
 first=admin.call('create_task',base_task)['id'];second=admin.call('create_task',{**base_task,'depends_on':[first],'sequence_number':20,'component_feature_ids':[f['id'] for f in it['features'] if f['scope']=='component']})['id']
 def task(id):return next(t for t in admin.call('tasks') if t['id']==id)
 def report(id,status,good=0,expected=200,version=None,client=admin):
- t=task(id);return client.call('report',{'task_id':id,'version':version or t['version'],'status_after':status,'good_quantity':good,'waste_quantity':0,'work_minutes':5,'notes':'Test integracyjny'},status=expected)
+ t=task(id);data={'task_id':id,'version':version or t['version'],'status_after':status,'good_quantity':good,'waste_quantity':0,'work_minutes':5,'notes':'Test integracyjny'}
+ if status=='cancelled' and expected==200:data['confirmation_token']=client.call('preview_report',data)['confirmation_token']
+ return client.call('report',data,status=expected)
 report(second,'in_progress',expected=422)
 report(first,'done',10,expected=422)
 original=task(first)['version'];report(first,'in_progress');report(first,'in_progress',version=original,expected=409)

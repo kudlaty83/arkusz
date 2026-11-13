@@ -36,6 +36,7 @@ function saveOrder(array $data,bool $editing,int $userId,bool $preview=false): i
    $previous=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$id])??fail('Brak zamówienia.',404);
    if((int)$previous['version']!==integer($data,'version'))fail('Zamówienie zmieniła inna osoba. Odśwież widok i ponów edycję.',409);
    $snapshot=orderPlanSnapshot($id);$plan=buildOrderPlan($snapshot,$data);
+   if($plan['tasks']&&cancelledProductionOrder($previous))fail('Najpierw jawnie przywróć anulowane zamówienie do realizacji, aby zmieniać plan.');
    if($plan['tasks'])permit('tasks.manage');
    $specification=$data;unset($specification['confirmation_token']);
    $fingerprint=hash('sha256',json_encode([$specification,$snapshot,$plan,$customer],JSON_THROW_ON_ERROR));

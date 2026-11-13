@@ -1,7 +1,7 @@
 name: arkusz
 services:
   setup:
-    image: localhost/arkusz-app:1.3.0
+    image: localhost/arkusz-app:1.4.0
     working_dir: /var/www
     build:
       context: .
@@ -30,7 +30,10 @@ services:
         create_host_path: true
         selinux: z
     environment:
+      DB_SECRET_UID: ${DB_SECRET_UID:-999}
+      DB_SECRET_GID: ${DB_SECRET_GID:-999}
       APP_DATA_HOST_PATH: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}
+    network_mode: none
   db:
     image: docker.io/library/mariadb:13
     restart: unless-stopped
@@ -50,7 +53,7 @@ services:
         create_host_path: true
         selinux: Z
     - type: bind
-      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/config
+      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/config/db
       target: /run/arkusz-secrets
       read_only: true
       bind:
@@ -66,13 +69,14 @@ services:
       timeout: 5s
       retries: 30
       start_period: 20s
-  web:
-    image: localhost/arkusz-app:1.3.0
-    working_dir: /var/www
+  init:
+    image: localhost/arkusz-app:1.4.0
     build:
       context: .
       dockerfile: Containerfile
-    restart: unless-stopped
+    working_dir: /var/www
+    entrypoint: [php, /var/www/initialize.php]
+    restart: 'no'
     depends_on:
       db:
         condition: service_healthy
@@ -82,11 +86,41 @@ services:
       DB_PASSWORD_FILE: /run/arkusz-secrets/db-password
       ADMIN_PASSWORD_FILE: /run/arkusz-secrets/admin-password
       SEED_DEMO: ${SEED_DEMO:-0}
+    volumes:
+    - type: bind
+      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/config/init
+      target: /run/arkusz-secrets
+      read_only: true
+      bind:
+        create_host_path: true
+        selinux: z
+    - type: bind
+      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/app
+      target: /var/www
+      read_only: true
+      bind:
+        create_host_path: true
+        selinux: z
+  web:
+    image: localhost/arkusz-app:1.4.0
+    working_dir: /var/www
+    build:
+      context: .
+      dockerfile: Containerfile
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    environment:
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      DB_HOST: db
+      DB_USER: drukarnia
+      DB_PASSWORD_FILE: /run/arkusz-secrets/db-password
     ports:
     - 127.0.0.1:${APP_PORT:-8080}:80
     volumes:
     - type: bind
-      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/config
+      source: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}/config/web
       target: /run/arkusz-secrets
       read_only: true
       bind:

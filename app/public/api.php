@@ -62,6 +62,8 @@ require dirname(__DIR__).'/customers.php';
 require dirname(__DIR__).'/users.php';
 require dirname(__DIR__).'/tasks.php';
 require dirname(__DIR__).'/templates.php';
+require dirname(__DIR__).'/production-actions.php';
+require dirname(__DIR__).'/login-limit.php';
 function taskAccess(array $task): void {
  if(allowed('tasks.manage')) return;
  if(!one('SELECT 1 FROM task_assignments WHERE task_id=? AND user_id=?',[$task['id'],$_SESSION['uid']])) fail('Możesz raportować tylko przydzielone zadania.',403);
@@ -76,10 +78,9 @@ try {
   if(!is_array($data)) fail('Niepoprawne dane.');
  }
  if($action==='login' && $method==='POST') {
-  $attempts=$_SESSION['login_attempts']??[]; $attempts=array_values(array_filter($attempts,fn($t)=>$t>time()-300));
-  if(count($attempts)>=10) fail('Zbyt wiele prób. Spróbuj za pięć minut.',429);
-  $u=one('SELECT * FROM users WHERE login=? AND is_active=1',[text($data,'login',100)]);
-  if(!$u || !password_verify((string)($data['password']??''),$u['password_hash'])) { $attempts[]=time(); $_SESSION['login_attempts']=$attempts; fail('Nieprawidłowy login lub hasło.',401); }
+  $login=text($data,'login',100);$u=one('SELECT * FROM users WHERE login=?',[$login]);$pair=reserveLoginAttempt($login,$u);
+  if(!$u||!$u['is_active']||!password_verify((string)($data['password']??''),$u['password_hash']))fail('Nieprawidłowy login lub hasło.',401);
+  run('DELETE FROM login_attempt_limits WHERE bucket_key=?',[$pair]);
   session_regenerate_id(true); $_SESSION=['uid'=>(int)$u['id'],'auth_version'=>(int)$u['auth_version'],'csrf'=>bin2hex(random_bytes(32))]; output(['ok'=>true]);
  }
  if(empty($_SESSION['uid'])) fail('Zaloguj się, aby kontynuować.',401);
@@ -154,14 +155,7 @@ try {
  }
  if($action==='preview_order_update' && $method==='POST')output(saveOrder($data,true,(int)$user['id'],true));
  if(in_array($action,['create_order','update_order'],true) && $method==='POST') output(['id'=>saveOrder($data,$action==='update_order',(int)$user['id'])]);
- if($action==='order_status' && $method==='POST') {
-  permit('orders.edit');db()->beginTransaction();$id=integer($data,'id');$o=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$id])??fail('Brak zamówienia.',404);
-  if((int)$o['version']!==integer($data,'version')) fail('Zamówienie zmieniła inna osoba. Odśwież widok.',409);
-  $s=reference('order_statuses',integer($data,'status_id'));if(!$s['is_active'])fail('Nieaktywny status.');
-  if((in_array($s['code'],['ready','delivered'],true)||($s['is_terminal']&&$s['code']!=='cancelled')) && one("SELECT t.id FROM production_tasks t JOIN order_items i ON i.id=t.order_item_id WHERE i.order_id=? AND t.status NOT IN ('done','cancelled') LIMIT 1",[$id])) fail('Najpierw zakończ zadania produkcyjne.');
-  run('UPDATE orders SET status_id=?,completed_at=?,version=version+1 WHERE id=?',[$s['id'],(in_array($s['code'],['ready','delivered'],true)||($s['is_terminal']&&$s['code']!=='cancelled'))?gmdate('Y-m-d H:i:s'):null,$id]);
-  insert('order_status_history',['order_id'=>$id,'old_status_id'=>$o['status_id'],'new_status_id'=>$s['id'],'changed_by'=>$user['id'],'reason'=>text($data,'reason',5000,false)]);db()->commit();output(['ok'=>true]);
- }
+ if(in_array($action,['order_status','preview_order_status'],true) && $method==='POST')output(saveOrderStatus($data,(int)$user['id'],$action==='preview_order_status'));
  if($action==='task' && $method==='GET'){permit('tasks.manage');output(taskDetails(integer($_GET,'id')));}
  if(in_array($action,['create_task','update_task','preview_task_update'],true) && $method==='POST'){
   $result=saveTask($data,(int)$user['id'],$action!=='create_task',$action==='preview_task_update');output(is_array($result)?$result:['id'=>$result]);
@@ -171,28 +165,14 @@ try {
  if($action==='save_template' && $method==='POST')output(['id'=>saveTemplate($data,(int)$user['id'])]);
  if(in_array($action,['preview_apply_template','apply_template'],true) && $method==='POST')output(applyTemplate($data,(int)$user['id'],$action==='preview_apply_template'));
  if($action==='assign_task' && $method==='POST'){
-  permit('tasks.manage');db()->beginTransaction();$t=one('SELECT * FROM production_tasks WHERE id=? FOR UPDATE',[integer($data,'id')])??fail('Brak zadania.',404);
+  permit('tasks.manage');db()->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');db()->beginTransaction();$existing=reference('production_tasks',integer($data,'id'));lockTaskOrder((int)$existing['order_item_id']);$t=reference('production_tasks',(int)$existing['id']);if($t['status']==='cancelled')fail('Nie można przydzielać anulowanego etapu.');
   if((int)$t['version']!==integer($data,'version'))fail('Zadanie zmieniono. Odśwież widok.',409);
   $ids=array_unique($data['assignee_ids']??[]);$names=[];
   foreach($ids as $uid){$u=one('SELECT u.id,u.display_name FROM users u JOIN user_work_centers c ON c.user_id=u.id WHERE u.id=? AND u.is_active=1 AND c.work_center_id=?',[(int)$uid,$t['work_center_id']]);if(!$u)fail('Pracownik spoza stanowiska.');$names[]=$u['display_name'];}
   run('DELETE FROM task_assignments WHERE task_id=?',[$t['id']]);foreach($ids as $uid)insert('task_assignments',['task_id'=>$t['id'],'user_id'=>(int)$uid,'assigned_by'=>$user['id']]);
   run('UPDATE production_tasks SET version=version+1 WHERE id=?',[$t['id']]);insert('task_status_history',['task_id'=>$t['id'],'old_status'=>$t['status'],'new_status'=>$t['status'],'event_type'=>'assignment','changed_by'=>$user['id'],'reason'=>'Wykonawcy: '.implode(', ',$names)]);db()->commit();output(['ok'=>true]);
  }
- if($action==='report' && $method==='POST') {
-  permit('tasks.report');db()->beginTransaction();$t=one('SELECT * FROM production_tasks WHERE id=? FOR UPDATE',[integer($data,'task_id')])??fail('Brak zadania.',404);taskAccess($t);
-  if((int)$t['version']!==integer($data,'version'))fail('Zadanie zostało zmienione. Odśwież widok.',409);
-  $status=$data['status_after']??'';$transitions=['pending'=>['in_progress','blocked','cancelled'],'ready'=>['in_progress','blocked','cancelled'],'in_progress'=>['in_progress','blocked','done','cancelled'],'blocked'=>['blocked','in_progress','cancelled'],'done'=>[],'cancelled'=>[]];
-  if(!in_array($status,$transitions[$t['status']]??[],true))fail('Niedozwolona zmiana statusu. Najpierw rozpocznij zadanie.');
-  if($status==='cancelled')permit('tasks.manage');
-  if(in_array($status,['in_progress','done'],true)&&one("SELECT d.task_id FROM task_dependencies d JOIN production_tasks p ON p.id=d.depends_on_task_id WHERE d.task_id=? AND p.status<>'done'",[$t['id']]))fail('Najpierw zakończ zadania poprzedzające.');
-  $good=integer($data,'good_quantity',0);$waste=integer($data,'waste_quantity',0);$minutes=integer($data,'work_minutes',0,100000);
-  $notes=text($data,'notes',10000,false);if($status==='blocked'&&$notes==='')fail('Opisz przyczynę blokady.');
-  $total=(int)one('SELECT COALESCE(SUM(good_quantity),0) qty FROM production_reports WHERE task_id=? AND plan_revision=?',[$t['id'],$t['plan_revision']])['qty']+$good;
-  if($status==='done'&&$total<(int)$t['planned_quantity'])fail('Wykonana ilość jest mniejsza od planowanej.');
-  insert('production_reports',['task_id'=>$t['id'],'plan_revision'=>$t['plan_revision'],'reported_by'=>$user['id'],'good_quantity'=>$good,'waste_quantity'=>$waste,'work_minutes'=>$minutes,'status_after'=>$status,'notes'=>$notes]);
-  run("UPDATE production_tasks SET status=?,version=version+1,started_at=IF(?='in_progress',COALESCE(started_at,UTC_TIMESTAMP()),started_at),finished_at=IF(?='done',UTC_TIMESTAMP(),NULL) WHERE id=?",[$status,$status,$status,$t['id']]);
-  insert('task_status_history',['task_id'=>$t['id'],'old_status'=>$t['status'],'new_status'=>$status,'changed_by'=>$user['id'],'reason'=>$notes]);db()->commit();output(['ok'=>true]);
- }
+ if(in_array($action,['report','preview_report'],true) && $method==='POST')output(saveProductionReport($data,(int)$user['id'],$action==='preview_report'));
  fail('Nieznana operacja.',404);
 } catch(PDOException $e) {
  if(db()->inTransaction())db()->rollBack();error_log($e->getMessage());

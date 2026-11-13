@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/production-state.php';
 
 // Migawka obejmuje również raporty i zależności: ich zmiana unieważnia potwierdzenie.
 function orderPlanSnapshot(int $id): array {
@@ -86,22 +87,31 @@ function buildOrderPlan(array $s,array $data): array {
  if($oldDue!==$newDue)$changes[]='Termin zamówienia (UTC): '.($oldDue??'brak').' → '.($newDue??'brak');
  // Anulowanie poprzednika anuluje też niezakończone etapy zależne, zamiast zostawiać je w martwej kolejce.
  $byId=array_column($s['tasks'],null,'id');
- do{$again=false;foreach($s['task_dependencies'] as $d)if(isset($cancel[$d['depends_on_task_id']])&&!in_array($byId[$d['depends_on_task_id']]['status'],['done','cancelled'],true)&&!isset($cancel[$d['task_id']])){$cancel[$d['task_id']]='Anulowanie poprzednika #'.$d['depends_on_task_id'];$again=true;}}while($again);
+ foreach(dependentTaskIds($s['task_dependencies'],array_keys($cancel)) as $tid)if(!isset($cancel[$tid]))$cancel[$tid]='Anulowanie wcześniejszego etapu';
  // Zmiana technologii poprzednika wymaga również weryfikacji dalszych etapów.
  do{$again=false;foreach($s['task_dependencies'] as $d)if(isset($revisions[$d['depends_on_task_id']])&&!isset($revisions[$d['task_id']])){$addReason((int)$d['task_id'],'Zmiana specyfikacji poprzednika #'.$d['depends_on_task_id'],true);$again=true;}}while($again);
+ $quantityReopened=[];
+ foreach($s['tasks'] as $t){
+  $item=$items[$t['order_item_id']]??null;$component=$t['component_id']?($oldComponents[$t['component_id']]??null):null;
+  if(!$item||isset($cancel[$t['id']])||$t['status']!=='done'||($component&&(int)$component['is_archived'])||(int)$item['quantity']===(int)$oldItems[$t['order_item_id']]['quantity'])continue;
+  $quantity=taskQuantityForCopies($t,integer($item,'quantity'));$good=0;
+  foreach($s['reports'] as $r)if((int)$r['task_id']===(int)$t['id']&&(int)$r['plan_revision']===(int)$t['plan_revision'])$good+=(int)$r['good_quantity'];
+  if($quantity>$good)$quantityReopened[]=(int)$t['id'];
+ }
+ $quantityReview=array_fill_keys(dependentTaskIds($s['task_dependencies'],$quantityReopened),true);
  $tasks=[];
  foreach($s['tasks'] as $t){
   $tid=(int)$t['id'];$after=[];$messages=[];
-  if($t['status']==='cancelled')continue;
+  if($t['status']==='cancelled'||($t['component_id']&&isset($oldComponents[$t['component_id']])&&(int)$oldComponents[$t['component_id']]['is_archived']))continue;
   if(isset($cancel[$tid])){
    if($t['status']==='done'){$changes[]='Zadanie #'.$tid.' '.$t['operation_name'].' już zakończono — zostaje w historii; '.$cancel[$tid].'.';continue;}
    $after=['status'=>'cancelled'];$messages[]=$cancel[$tid].'; status: '.$t['status'].' → anulowane';
   }else{
    $item=$items[$t['order_item_id']]??null;
    if($item&&(int)$item['quantity']!==(int)$oldItems[$t['order_item_id']]['quantity']){
-    $quantity=(int)ceil((int)$t['planned_quantity']*integer($item,'quantity')/(int)$oldItems[$t['order_item_id']]['quantity']);
+    $quantity=taskQuantityForCopies($t,integer($item,'quantity'));
     if($quantity>100000000)fail('Przeliczony plan zadania przekracza dopuszczalną ilość.');
-    if($quantity!==(int)$t['planned_quantity']){$after['planned_quantity']=$quantity;$messages[]='ilość: '.$t['planned_quantity'].' → '.$quantity.' '.$t['quantity_unit'].' (proporcjonalnie, zaokrąglenie w górę)';}
+    if($quantity!==(int)$t['planned_quantity']){$after['planned_quantity']=$quantity;$messages[]='ilość: '.$t['planned_quantity'].' → '.$quantity.' '.$t['quantity_unit'].' (z zapisanej podstawy, zaokrąglenie w górę)';}
    }
    $good=0;foreach($s['reports'] as $r)if((int)$r['task_id']===$tid&&(int)$r['plan_revision']===(int)$t['plan_revision'])$good+=(int)$r['good_quantity'];
    if($oldDue!==$newDue&&($t['status']!=='done'||isset($revisions[$tid])||(isset($after['planned_quantity'])&&$after['planned_quantity']>$good))){
@@ -112,8 +122,8 @@ function buildOrderPlan(array $s,array $data): array {
    if(isset($revisions[$tid])){
     $after['plan_revision']=(int)$t['plan_revision']+1;$after['status']='blocked';$after['started_at']=null;$after['finished_at']=null;
     $messages[]='nowa rewizja planu '.$after['plan_revision'].'; wstrzymanie do weryfikacji. Dotychczasowe raporty pozostają w historii; wykonanie nowej specyfikacji liczone od 0';
-   }elseif($t['status']==='done'&&isset($after['planned_quantity'])&&$good<$after['planned_quantity']){
-    $after['status']='blocked';$after['finished_at']=null;$messages[]='ponowne otwarcie: wykonano '.$good.', pozostało '.($after['planned_quantity']-$good);
+   }elseif(isset($quantityReview[$tid])){
+    $after['status']='blocked';$after['finished_at']=null;$messages[]='weryfikacja po ilościowym wznowieniu etapu lub poprzednika; dotychczasowe wykonanie '.$good.' pozostaje zachowane';
    }
    foreach(array_unique($reasons[$tid]??[]) as $reason)$messages[]=$reason;
   }

@@ -1,10 +1,10 @@
-# Arkusz 1.3 — obsługa drukarni
+# Arkusz 1.4 — obsługa drukarni
 
 Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pracy drukarni: od ustaleń z klientem, przez przygotowalnię i druk, po introligatornię i wydanie. Interfejs jest w języku polskim. Aplikacja działa jako strona internetowa i może być instalowana w Chrome jako PWA.
 
 **Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
 
-Aktualna wersja testowa: **1.3.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.3**. Schemat bazy: **rewizja 5**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
+Aktualna wersja testowa: **1.4.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.4**. Schemat bazy: **rewizja 6**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
 **Instalacja, pierwsze logowanie, kopie zapasowe i aktualizacje: [install.md](install.md).**
 
@@ -51,6 +51,10 @@ Zapis wymaga podglądu i osobnego zatwierdzenia. Edycja operacji, części, jedn
 
 Raporty pozostają niezmienne; ich nazwa operacji i jednostka są odtwarzane z zachowanej migawki sprzed edycji, więc nie zmieniają znaczenia wraz z aktualnym etapem. Historia zamówienia pokazuje zatwierdzone edycje etapów, a dziennik zadań obejmuje wszystkie dotknięte etapy. Raport lub inna zmiana planu po podglądzie wymaga ponownego potwierdzenia. Anulowanych etapów i etapów wycofanych elementów nie edytuje się — pozostają w historii.
 
+Ilość etapu ma tryb **Proporcjonalnie do nakładu** albo **Stała**. Formularz pokazuje zapisaną podstawę; można jawnie wyznaczyć nową podstawę z bieżącej ilości i nakładu. Starsze zadania bez jednoznacznej reguły wymagają wyboru trybu w edytorze przed zmianą nakładu. Szablony zachowują współczynnik z użytej wersji, np. 1,25, oraz ilości stałe.
+
+Anulowanie zamówienia albo etapu wymaga podglądu i osobnego zatwierdzenia. Zamówienie anuluje wszystkie niedokończone etapy, a etap — swoich niedokończonych następników. Zakończona praca i raporty pozostają w historii. Anulowane zamówienie blokuje raportowanie i planowanie; jawne przywrócenie jego statusu wymaga ponownego zaplanowania anulowanych etapów. Raport po podglądzie unieważnia zgodę.
+
 ## Typowe etapy dla części
 
 W **Słowniki → Rodzaje części** administrator definiuje np. okładkę, środek i wkładkę. Rodzaj wybiera się przy edycji części zamówienia; starsze części zachowują pusty rodzaj do samodzielnego przypisania. Zmiana tej klasyfikacji nie przelicza istniejących zadań.
@@ -69,13 +73,15 @@ W zakładce **Zespół** administrator dodaje i edytuje pracowników: login, imi
 
 Każdy użytkownik ma opcję **Zmień moje hasło** w panelu bocznym. Podaje obecne hasło i dwukrotnie nowe. Bieżąca sesja pozostaje aktywna, a pozostałe sesje wygasają. Administrator może **Ustawić nowe hasło** innemu pracownikowi w zakładce Zespół; powoduje to wygaśnięcie wszystkich sesji tego konta. Wyłączenie i ponowne włączenie konta nie przywraca wcześniejszych sesji. Hasła są przechowywane jako skróty, a API nie zwraca ich ani ich skrótów.
 
+Próby logowania są limitowane w bazie według konta, źródła i globalnie; nowa sesja nie omija blokady. Hasła kontenerów mają prywatne uprawnienia i oddzielne katalogi usług, a proces WWW otrzymuje wyłącznie hasło własnego konta bazy.
+
 ## Edycja i historia
 
 Przyciski **Edytuj zamówienie**, **Edytuj produkt** i **Edytuj część** otwierają formularz aktualnej specyfikacji. Można zmieniać parametry oraz dodawać produkty i części. Edycja zachowuje raporty i przydziały; usunięte elementy są archiwizowane. Zapis zamówienia i planu jest transakcyjny. Formularz ostrzega o skutkach zmian, a przed zapisem pokazuje ich dokładne podsumowanie z osobnym przyciskiem **Zatwierdź i zapisz zmiany**. Można wrócić do edycji bez zapisywania.
 
 Po zatwierdzeniu aplikacja stosuje następujące reguły:
 
-- Nakład skaluje planowane ilości nieanulowanych zadań proporcjonalnie do dotychczasowego planu, z zaokrągleniem w górę. Dotyczy to także innych jednostek raportowania. Zakończone zadanie z brakującą ilością wraca do stanu wstrzymanego; dotychczasowe wykonanie jest zachowane. Spadek nakładu nie kończy automatycznie trwających zadań ani nie usuwa nadprodukcji.
+- Nakład przelicza proporcjonalne ilości nieanulowanych zadań z zapisanej podstawy, z zaokrągleniem w górę; kolejne zmiany nie kumulują zaokrągleń. Ilości stałe pozostają bez zmian. Zakończone zadanie z brakującą ilością oraz jego następnicy wracają do stanu wstrzymanego, także przy nadprodukcji następnika; dotychczasowe wykonanie jest zachowane. Spadek nakładu nie kończy automatycznie trwających zadań ani nie usuwa nadprodukcji.
 - Zmiana terminu przesuwa terminy i planowane rozpoczęcia niezakończonych zadań o tę samą różnicę czasu, zachowując odstępy. Przy pierwszym nadaniu terminu zadania otrzymują termin zamówienia; jego usunięcie usuwa terminy zadań. Daty faktycznego wykonania pozostają historyczne.
 - Zmiana parametrów technologicznych produktu, części lub powiązanej cechy wstrzymuje dotknięte zadania i etapy zależne oraz tworzy nową rewizję ich planu. Dotyczy także zadań zakończonych: wykonanie nowej specyfikacji liczy się od zera, a wcześniejsze raporty pozostają w historii. Same uwagi nie zerują wykonania. Zamówienie gotowe lub zamknięte, w którym wznowiono zadania, wraca do produkcji.
 - Usunięcie produktu, części lub powiązanej cechy anuluje niezakończone zadania objęte zmianą i niezakończonych następców. Usunięcie części obejmuje również zadania całego produktu. Zadania zakończone i raporty pozostają w historii. Zmiana rodzaju cechy zachowuje jej dawny rekord i przenosi powiązanie zadania do nowej specyfikacji.

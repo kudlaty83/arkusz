@@ -10,7 +10,7 @@ function taskDate(array $data,string $key): ?string {
 function lockTaskOrder(int $itemId): array {
  $item=reference('order_items',$itemId);
  one('SELECT id FROM orders WHERE id=? FOR UPDATE',[$item['order_id']]);
- $snapshot=orderPlanSnapshot((int)$item['order_id']);
+ $snapshot=orderPlanSnapshot((int)$item['order_id']);requireProductionOpen($snapshot['order']);
  $item=reference('order_items',$itemId);
  if((int)$item['is_archived'])fail('Produkt został wycofany ze specyfikacji.');
  return [$item,$snapshot];
@@ -73,6 +73,7 @@ function saveTask(array $data,int $userId,bool $editing,bool $preview=false): in
  $center=retainedReference('work_centers',integer($data,'work_center_id'),$old['work_center_id']??null);
  $fields=['component_id'=>$component['id']??null,'operation_type_id'=>$op['id'],'operation_name'=>$old&&(int)$old['operation_type_id']===(int)$op['id']?$old['operation_name']:$op['name'],'work_center_id'=>$center['id'],'sequence_number'=>integer($data,'sequence_number',1,65535),'planned_quantity'=>integer($data,'planned_quantity'),'quantity_unit'=>text($data,'quantity_unit',30),'planned_start_at'=>taskDate($data,'planned_start_at'),'due_at'=>array_key_exists('due_at',$data)?taskDate($data,'due_at'):($snapshot['order']['due_at']??null),'instructions'=>text($data,'instructions',10000,false)];
  if($fields['planned_start_at']&&$fields['due_at']&&$fields['planned_start_at']>$fields['due_at'])fail('Planowany początek musi być przed terminem zakończenia.');
+ $fields=[...$fields,...manualQuantityRule($data,$fields['planned_quantity'],(int)$item['quantity'],$old)];$fields['planned_quantity']=taskQuantityForCopies($fields,(int)$item['quantity']);
  $params=$old?json_decode($old['parameters']??'{}',true):[];if(!is_array($params))$params=[];$notes=text($data,'parameter_notes',10000,false);if($notes!==''||array_key_exists('notes',$params))$params['notes']=$notes;$fields['parameters']=$params?json_encode($params,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR):null;
  $ids=[];foreach(['assignee_ids','depends_on','item_feature_ids','component_feature_ids'] as $key){$ids[$key]=userIds($data,$key);sort($ids[$key]);}
  $tasks=array_values(array_filter($snapshot['tasks'],fn($t)=>(int)$t['order_item_id']===(int)$item['id']));$byId=array_column($tasks,null,'id');
@@ -94,7 +95,7 @@ function saveTask(array $data,int $userId,bool $editing,bool $preview=false): in
  }
  $changes=[];$technical=false;
  $display=static function($key,$v):string{if($key==='parameters')return json_decode($v??'{}',true)['notes']??'brak';$table=['component_id'=>'item_components','operation_type_id'=>'operation_types','work_center_id'=>'work_centers'][$key]??null;return $table&&$v?reference($table,(int)$v)['name'].' (#'.$v.')':(planValue($v)?:'brak');};
- $names=['component_id'=>'część','operation_type_id'=>'operacja','work_center_id'=>'stanowisko','sequence_number'=>'kolejność','planned_quantity'=>'ilość','quantity_unit'=>'jednostka','planned_start_at'=>'planowany początek UTC','due_at'=>'termin UTC','instructions'=>'instrukcje','parameters'=>'parametry'];
+ $names=['component_id'=>'część','operation_type_id'=>'operacja','work_center_id'=>'stanowisko','sequence_number'=>'kolejność','planned_quantity'=>'ilość','quantity_mode'=>'sposób liczenia','quantity_base_quantity'=>'bazowa ilość','quantity_base_copies'=>'bazowy nakład','quantity_review_required'=>'weryfikacja podstawy','quantity_unit'=>'jednostka','planned_start_at'=>'planowany początek UTC','due_at'=>'termin UTC','instructions'=>'instrukcje','parameters'=>'parametry'];
  foreach($names as $key=>$name)if(planValue($old[$key])!==planValue($fields[$key])){
   $changes[]=$name.': '.$display($key,$old[$key]).' → '.$display($key,$fields[$key]);
   if(in_array($key,['component_id','operation_type_id','quantity_unit','parameters'],true))$technical=true;

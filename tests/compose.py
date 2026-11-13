@@ -25,6 +25,7 @@ class Client:
 wait()
 config=json.loads(compose('config','--format','json'))
 assert not config.get('volumes')
+assert config['services']['setup']['network_mode']=='none'
 assert all(config['services'][name]['working_dir']=='/var/www' for name in ['setup','web'])
 assert compose('exec','-T','web','pwd').decode().strip()=='/var/www'
 for service in config['services'].values():
@@ -33,12 +34,17 @@ root=pathlib.Path(config['services']['setup']['environment']['APP_DATA_HOST_PATH
 if root.resolve()==(pathlib.Path.cwd()/'app_data').resolve():raise SystemExit('Test wymaga osobnego APP_DATA_DIR, nie app_data instalacji użytkowej.')
 assert (root/'app/public/index.html').is_file() and (root/'database').is_dir()
 assert (root/'sessions').is_dir()
+assert (root/'config').stat().st_mode & 0o777==0o700
+assert all((root/'config'/name).stat().st_mode & 0o777==0o400 for name in ['admin-password','db-password','db-root-password'])
+assert compose('exec','-T','--user','33','web','php','-r','exit(is_readable("/run/arkusz-secrets/db-password")&&!file_exists("/run/arkusz-secrets/db-root-password")&&!file_exists("/run/arkusz-secrets/admin-password")?0:1);')==b''
+assert 'ADMIN_PASSWORD_FILE' not in config['services']['web'].get('environment',{})
+assert config['services']['web']['depends_on']['init']['condition']=='service_completed_successfully'
 host_password=(root/'config/admin-password').read_text().strip()
-password=compose('exec','-T','web','cat','/run/arkusz-secrets/admin-password').decode().strip();assert len(password)>=24 and password==host_password
-fingerprints=compose('exec','-T','web','php','-r',"foreach(['admin-password','db-password','db-root-password'] as $f)echo hash_file('sha256','/run/arkusz-secrets/'.$f).PHP_EOL;")
+password=compose('run','--rm','--no-deps','-T','--entrypoint','cat','setup','/run/arkusz-secrets/admin-password').decode().strip();assert len(password)>=24 and password==host_password
+fingerprints=compose('run','--rm','--no-deps','-T','--entrypoint','php','setup','-r',"foreach(['admin-password','db-password','db-root-password'] as $f)echo hash_file('sha256','/run/arkusz-secrets/'.$f).PHP_EOL;")
 client=Client();boot=client.login(password);assert len(boot['dictionaries']['paper_variants'])>=10
-versions=client.call('version');assert versions['application']['version']=='1.3.0' and versions['application']['api_version']=='1.3'
-assert versions['database']['schema_version']==5 and versions['database']['schema_release']=='1.3.0'
+versions=client.call('version');assert versions['application']['version']=='1.4.0' and versions['application']['api_version']=='1.4'
+assert versions['database']['schema_version']==6 and versions['database']['schema_release']=='1.4.0'
 assert versions['runtime']['php'].startswith('8.4.') and versions['database']['server_version'].startswith('13.')
 demo_count=len([o for o in client.call('orders') if o['order_number']=='DEMO/001'])
 assert demo_count==0
@@ -59,7 +65,7 @@ assert (root/'app/public/index.html').read_bytes()==original_index
 assert not (root/'app/removed-by-test.txt').exists()
 assert client.call('bootstrap')['user']['theme']=='beige_light'  # sesja również przetrwała
 
-assert fingerprints==compose('exec','-T','web','php','-r',"foreach(['admin-password','db-password','db-root-password'] as $f)echo hash_file('sha256','/run/arkusz-secrets/'.$f).PHP_EOL;")
+assert fingerprints==compose('run','--rm','--no-deps','-T','--entrypoint','php','setup','-r',"foreach(['admin-password','db-password','db-root-password'] as $f)echo hash_file('sha256','/run/arkusz-secrets/'.$f).PHP_EOL;")
 client=Client();assert client.login(password)['user']['theme']=='beige_light';assert client.call('order&id='+str(order))['order']['customer_notes']=='Utworzone przez API po instalacji Compose'
 assert len([o for o in client.call('orders') if o['order_number']=='DEMO/001'])==demo_count
 # Obie kopie są trzymane w prywatnym katalogu /tmp; nie trafiają do repozytorium.

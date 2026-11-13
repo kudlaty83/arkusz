@@ -1,4 +1,4 @@
-# Instalacja i aktualizacja Arkusza 1.3
+# Instalacja i aktualizacja Arkusza 1.4
 
 Instrukcja dla osoby uruchamiającej własną drukarnię w aplikacji. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
 
@@ -38,7 +38,7 @@ Na Linuksie/macOS, w katalogu projektu, domyślna lokalizacja danych to bezwzgl�
 5. Tworzy schemat, wykonuje dostępne aktualizacje schematu i zakłada słowniki, konto administratora bez tworzenia przykładowych zamówień.
 6. Udostępnia stronę dopiero po inicjalizacji i sprawdza jej gotowość.
 
-Usługa `setup` powinna zakończyć się kodem 0 — to jednorazowe przygotowanie konfiguracji, nie serwer wymagający ciągłego działania. Dwie pozostałe usługi, `db` i `web`, pozostają uruchomione. Ponowny start nie zmienia wygenerowanych haseł ani nie dubluje danych startowych.
+Usługa `setup` powinna zakończyć się kodem 0 — to jednorazowe przygotowanie konfiguracji, nie serwer wymagający ciągłego działania. Usługa `init` również kończy się kodem 0 po inicjalizacji i migracjach. Usługi `db` i `web` pozostają uruchomione. Ponowny start nie zmienia wygenerowanych haseł ani nie dubluje danych startowych.
 
 ## 3. Pierwsze logowanie
 
@@ -53,12 +53,12 @@ cat app_data/config/admin-password
 Przy Dockerze plik może należeć do administratora systemu — użyj odpowiednich uprawnień albo odczytaj go przez kontener:
 
 ```sh
-docker compose exec web cat /run/arkusz-secrets/admin-password
+docker compose run --rm --no-deps -T --entrypoint cat setup /run/arkusz-secrets/admin-password
 ```
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.3.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.4.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -95,7 +95,10 @@ app_data/
 ├── config/
 │   ├── admin-password      # pierwsze hasło konta admin
 │   ├── db-password         # hasło konta bazy używanego przez aplikację
-│   └── db-root-password    # hasło administratora MariaDB
+│   ├── db-root-password    # hasło administratora MariaDB
+│   ├── db/                 # tylko hasła potrzebne MariaDB
+│   ├── init/               # hasła potrzebne inicjalizacji
+│   └── web/                # wyłącznie hasło konta bazy aplikacji
 └── sessions/               # prywatne pliki sesji PHP
 ```
 
@@ -114,6 +117,8 @@ APP_PORT=8080
 ```
 
 Katalog musi być zapisywalny dla silnika kontenerów. Nie używaj ścieżki względnej ani wspólnego katalogu danych dla kilku instalacji. Jeśli jest to lokalizacja w repozytorium inna niż `app_data`, dodaj ją do `.gitignore`, `.dockerignore` i `.containerignore`; domyślny `app_data` jest już wykluczony. Nie ustawiaj wszystkim plikom uprawnień `777` — konfiguracja przygotowuje potrzebne prawa, a sesje mają prywatny katalog.
+
+Katalog `config` i jego podkatalogi mają prawa `0700`, a pliki haseł `0400`. Kopie główne należą do roota kontenera; `web` otrzymuje tylko hasło konta aplikacji, czytelne dla UID/GID 33. MariaDB otrzymuje własny katalog dla UID/GID 999; przy obrazie z innymi identyfikatorami ustaw `DB_SECRET_UID` i `DB_SECRET_GID` w `.env`. Proces WWW nie otrzymuje hasła roota bazy ani pierwszego hasła administratora. `setup` poprawia także uprawnienia istniejącej konfiguracji bez zmiany haseł.
 
 Dane konfiguracyjne pozostają na dysku między uruchomieniami. Edycja pliku `admin-password` nie resetuje hasła konta, które już istnieje w bazie. Plik nie jest publikowany przez serwer WWW.
 
@@ -140,6 +145,8 @@ W **Klienci** wyszukuj po początku nazwy, NIP-u, e-maila lub telefonu, wybieraj
 Administrator edytuje konta w **Zespół → Edytuj konto**. Może zmienić login, role, stanowiska, dane i aktywność. **Ustaw nowe hasło** służy do zmiany hasła innej osoby. Każdy pracownik ma w panelu bocznym opcję **Zmień moje hasło**, która wymaga obecnego hasła i dwukrotnego podania nowego. Hasło musi mieć co najmniej 12 znaków; maksymalna długość to 72 bajty UTF-8 (polskie znaki mogą zajmować więcej niż jeden bajt).
 
 Plik `config/admin-password` przechowuje pierwsze hasło z inicjalizacji. Po zmianie hasła w aplikacji zawartość tego pliku nie jest aktualizowana i nie służy do resetowania konta. Po zmianie własnego hasła pozostałe sesje konta wygasają; po zmianie przez administratora wygasają wszystkie sesje wskazanego pracownika. Nie można wyłączyć siebie ani pozbawić dostępu ostatniego administratora.
+
+Limit logowania jest przechowywany w bazie, więc usunięcie ciasteczek go nie zeruje. Po przekroczeniu limitu API zwraca HTTP 429 i `Retry-After`. Za reverse proxy wpisz jego dokładne adresy IP w `TRUSTED_PROXY_IPS` (lista rozdzielona przecinkami), jeśli ma być uwzględniany adres klienta z `X-Forwarded-For`. Domyślnie nagłówek ten nie jest zaufany.
 
 ## Dostęp z innych urządzeń i instalacja na telefonie
 
@@ -208,6 +215,10 @@ Używane będą konta i hasła zapisane w kopii. Po odtworzeniu sprawdź zamówi
 
 ## Aktualizacja
 
+Wersja 1.4.0 wykonuje migrację `0006_review_fixes.php` do schematu 6. Zachowuje ilości i raporty, zapisuje podstawę przeliczania zadań oraz dodaje trwały licznik prób logowania. Dla dawnych zadań bez jednoznacznego źródła wybierz w edycji etapu sposób liczenia ilości przed zmianą nakładu. Dla niezmienionych ilości z szablonu podstawę odtwarza zachowana migawka użytej wersji. Migracja anuluje niedokończone zadania anulowanych zamówień i niedokończonych następców anulowanych etapów, zapisując uzasadnienie w historii; zakończone zadania i raporty pozostają zachowane.
+
+Compose ma teraz osobną usługę `init` i rozdzielone katalogi haseł. Zachowaj cały dotychczasowy `config`; `setup` przygotuje podkatalogi i poprawi prawa bez rotacji haseł. Przywracając archiwum konfiguracji, uruchom `docker compose run --rm setup` przed startem bazy, aby odtworzyć kopie dla usług.
+
 Wersja 1.3.0 wykonuje migrację 0005 do schematu 5. Dodaje słownik rodzajów części, szablony i ich etapy, rejestr zastosowania oraz audyt edycji zadań. Istniejące części mają pusty rodzaj, a dotychczasowe zadania i raporty pozostają zachowane. Nie zmieniaj już zastosowanych plików migracji.
 
 Wersja 1.2.0 wykonuje migrację 0004 do schematu 4: dodaje wersje klientów i kont, licznik sesji oraz indeksy. Zachowuje konta, hasła, zamówienia i przydziały. Dotychczasowych plików migracji nie należy zmieniać.
@@ -253,13 +264,13 @@ docker compose exec -T web php -r 'require "/var/www/db.php"; require "/var/www/
 docker compose exec -T web php /var/www/migrate.php
 ```
 
-Drugie polecenie jest idempotentne dla aktualnej bazy. Nie zastępuje kopii przed aktualizacją. W przypadku błędu zajrzyj do `docker compose logs web` i nie poprawiaj ręcznie sum kontrolnych. Powrót po zmianie schematu wymaga odpowiedniego starego wydania oraz odtworzenia kopii bazy, zamiast uruchamiania starego kodu na nowszej strukturze.
+Drugie polecenie jest idempotentne dla aktualnej bazy. Nie zastępuje kopii przed aktualizacją. W przypadku błędu zajrzyj do `docker compose logs init web` i nie poprawiaj ręcznie sum kontrolnych. Powrót po zmianie schematu wymaga odpowiedniego starego wydania oraz odtworzenia kopii bazy, zamiast uruchamiania starego kodu na nowszej strukturze.
 
 ## Diagnostyka
 
 ```sh
 docker compose ps -a
-docker compose logs --tail=100 setup db web
+docker compose logs --tail=100 setup db init web
 ```
 
 - **Błąd `mkdir /var/www/html: read-only file system`:** starszy obraz PHP dziedziczy katalog roboczy `/var/www/html`, którego nie ma w zamontowanej aplikacji. Dodaj `working_dir: /var/www` w usłudze `web` (na poziomie `image`), a następnie wykonaj `docker compose up -d --no-deps --force-recreate web`. Trwała poprawka znajduje się w wydaniu 1.1.1; po dostarczeniu jego źródeł przebuduj obraz według instrukcji aktualizacji. Nie trzeba zmieniać adresu IP ani uprawnień montowania aplikacji.

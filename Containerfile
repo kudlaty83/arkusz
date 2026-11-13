@@ -13,7 +13,7 @@ RUN chown -R www-data:www-data /var/www \
     && echo 'session.save_path=/var/lib/php/sessions' > /usr/local/etc/php/conf.d/arkusz-sessions.ini
 ENV APACHE_DOCUMENT_ROOT=/var/www/public
 RUN sed -ri 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
-LABEL org.opencontainers.image.title="Arkusz" org.opencontainers.image.licenses="AGPL-3.0-only" org.opencontainers.image.version="1.3.0"
+LABEL org.opencontainers.image.title="Arkusz" org.opencontainers.image.licenses="AGPL-3.0-only" org.opencontainers.image.version="1.4.0"
 EXPOSE 80
 
 ENTRYPOINT ["arkusz-entrypoint"]

@@ -2,6 +2,20 @@
 
 **Arkusz jest aplikacją testową i prototypową, powstałą w większości z użyciem generatywnej AI. Nie jest kompletnym programem dla drukarni. Projekt stanowi zaproszenie do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju; numer 1.0.0 nie oznacza gotowości produkcyjnej.**
 
+## 1.4.0 — 2026-11-13
+
+Wydanie testowe, powstałe w większości z użyciem AI, przeznaczone do oceny i dalszego rozwoju. Program: **1.4.0**; API: **1.4**; schemat: **rewizja 6**.
+
+- Anulowanie zamówienia anuluje niedokończone etapy i blokuje planowanie, przydziały oraz raporty. Anulowanie etapu obejmuje jego niedokończonych następców. Obie operacje wymagają podglądu, potwierdzenia i aktualnego planu; zakończone zadania oraz raporty pozostają zachowane.
+- Zwiększenie nakładu wstrzymuje następców ponownie otwartego etapu także wtedy, gdy mają nadprodukcję. Zachowuje wykonanie do weryfikacji.
+- Ilości proporcjonalne liczone ze stałej podstawy, bez kumulowania zaokrągleń; ilości stałe z szablonów pozostają stałe. Edytor pokazuje tryb, podstawę i możliwość jej jawnego przeliczenia. Późniejsze zmiany szablonu nie zmieniają reguły istniejącego zadania.
+- Trwały, atomowy limit logowania w MariaDB, niezależny od ciasteczek, z limitami konta i źródła, HTTP 429 i `Retry-After`. Nagłówki proxy uwzględniane wyłącznie dla jawnie wskazanych adresów `TRUSTED_PROXY_IPS`.
+- Prywatne katalogi haseł `0700`, pliki `0400`, rozdzielone pomiędzy `db`, `init` i `web`. WWW nie otrzymuje hasła roota MariaDB ani hasła pierwszego administratora. Nowa usługa `init` wykonuje migracje przed uruchomieniem WWW. Istniejące hasła są zachowane.
+- Migracja 0006 zachowuje planowane ilości i raporty, odtwarza pewne reguły z migawek szablonów, pozostałe oznacza do jawnej weryfikacji. Naprawia aktywne zadania anulowanych zamówień i następników anulowanych etapów z wpisem do historii. Dotychczasowe migracje pozostają niezmienione.
+- API: `preview_order_status` / `order_status`, `preview_report` / `report` wymagają tokenu przy anulowaniu. Zadania zwracają tryb i podstawę ilości; starsze zadania wymagają jawnego wyboru reguły przed zmianą nakładu.
+
+Aktualizacja: kopia bazy i całego `config`, zatrzymanie WWW, przebudowanie oraz uruchomienie Compose według `install.md`. Wycofanie wymaga odtworzenia kopii wraz ze źródłami poprzedniego wydania.
+
 ## 1.3.0 — 2026-11-13
 
 Wydanie testowe. Program: **1.3.0**; API: **1.3**; schemat: **rewizja 5**. Obrazy: PHP `8.4-apache`, MariaDB `13`.

@@ -1,4 +1,4 @@
--- Arkusz 1.3.0 — kompletny schemat bazy, rewizja 5.
+-- Arkusz 1.4.0 — kompletny schemat bazy, rewizja 6.
 -- Historia zastosowania jest zapisywana przez wersjonowane migracje aplikacji.
 -- Uruchamiać w wybranej, pustej bazie danych. Celowo bez DROP TABLE.
 -- Wszystkie daty i godziny aplikacja zapisuje w UTC.
@@ -190,6 +190,10 @@ CREATE TABLE operation_types (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE production_tasks (
+    quantity_mode ENUM('legacy','per_copy','fixed') NOT NULL DEFAULT 'legacy',
+    quantity_base_quantity BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    quantity_base_copies INT UNSIGNED NOT NULL DEFAULT 1,
+    quantity_review_required BOOLEAN NOT NULL DEFAULT TRUE,
     template_application_id BIGINT UNSIGNED NULL,
     template_step_number SMALLINT UNSIGNED NULL,
     -- Raporty poprzednich specyfikacji nie zwiększają wykonania nowej rewizji.
@@ -494,3 +498,13 @@ CREATE TABLE IF NOT EXISTS task_plan_changes (
 ALTER TABLE item_components ADD CONSTRAINT fk_component_type FOREIGN KEY(component_type_id) REFERENCES component_types(id);
 ALTER TABLE production_tasks ADD CONSTRAINT fk_task_template_application FOREIGN KEY(template_application_id) REFERENCES component_template_applications(id);
 INSERT INTO component_types(code,name,description) VALUES ('cover','Okładka','Okładka książki lub broszury'),('body','Środek','Wnętrze książki lub broszury'),('insert','Wkładka','Dodatkowa wkładka'),('whole','Całość','Jednoczęściowy produkt') ON DUPLICATE KEY UPDATE code=VALUES(code);
+
+-- Atomowe limity niezależne od sesji; brak loginów i adresów wprost.
+CREATE TABLE login_attempt_limits (
+ bucket_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ bucket_kind VARCHAR(20) NOT NULL,
+ window_started BIGINT UNSIGNED NOT NULL,
+ attempts INT UNSIGNED NOT NULL DEFAULT 0,
+ expires_at DATETIME NOT NULL,
+ INDEX idx_login_limits_expiry(expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

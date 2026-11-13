@@ -12,7 +12,7 @@ function restoreFeature(root,f,scope){
  for(const v of f.values){const input=$('[data-param="'+v.code+'"]',el);if(input)input.value=v.value_text??v.value_number??v.value_boolean??'';}
 }
 function restoreComponent(root,c,features){
- root.insertAdjacentHTML('beforeend',componentEditor());const el=root.lastElementChild;bindComponent(el);el.dataset.componentId=c.id;$('[data-remove-component]',el).hidden=true;
+ root.insertAdjacentHTML('beforeend',componentEditor());const el=root.lastElementChild;bindComponent(el);el.dataset.componentId=c.id;
  editorValue($('[data-key=print_technique]',el),c.print_technique);$('[data-key=print_technique]',el).dispatchEvent(new Event('change'));
  for(const input of $$('[data-key]',el))editorValue(input,c[input.dataset.key],input.dataset.key==='paper_variant_id'?c.paper_description:'');
  if(c.print_technique==='offset')for(const side of ['front','back']){
@@ -22,7 +22,7 @@ function restoreComponent(root,c,features){
  for(const f of features.filter(f=>f.scope==='component'&&+f.component_id===+c.id))restoreFeature($('[data-component-features]',el),f,'component');
 }
 function restoreItem(root,item){
- root.insertAdjacentHTML('beforeend',itemEditor());const el=root.lastElementChild;bindItem(el);el.dataset.itemId=item.id;$('[data-remove-item]',el).hidden=true;
+ root.insertAdjacentHTML('beforeend',itemEditor());const el=root.lastElementChild;bindItem(el);el.dataset.itemId=item.id;
  for(const input of $$('[data-item-key]',el))editorValue(input,item[input.dataset.itemKey],item.product_type_name);
  $('[data-components]',el).innerHTML='';for(const c of item.components)restoreComponent($('[data-components]',el),c,item.features);
  for(const f of item.features.filter(f=>f.scope==='item'))restoreFeature($('[data-item-features]',el),f,'item');
@@ -42,7 +42,7 @@ function collectOrder(form){
 }
 function openOrderEditor(detail=null,focus=null){
  const editing=!!detail,o=detail?.order;
- openModal(editing?'Edytuj zamówienie · '+o.order_number:'Nowe zamówienie',`<form id="order-form"><div class="notice">${editing?'Edytujesz dane zamówienia i specyfikację produktów. Istniejące części oraz historia pracy zostają zachowane. Zmiana nakładu lub terminu zamówienia nie zmienia automatycznie planu istniejących zadań.':'Opisz produkty i ich części. Zadania oraz wykonawców zaplanujesz w karcie zamówienia.'}</div><div class="form-grid"><label>Klient<select name="customer_id" required>${opts(state.data.customers)}</select><small>Nowego klienta dodasz w zakładce Klienci.</small></label>${field('title','Tytuł zamówienia','text','','required maxlength="255"')}${field('due_at','Termin realizacji (Twój czas lokalny)','datetime-local')}<label>Priorytet<select name="priority">${Object.entries(priorities).map(([v,l])=>`<option value="${v}" ${v==='normal'?'selected':''}>${l}</option>`).join('')}</select></label>${field('contact_name','Osoba kontaktowa','text','','maxlength="200"')}${field('contact_email','E-mail kontaktowy','email','','maxlength="254"')}${field('contact_phone','Telefon kontaktowy','tel','','maxlength="50"')}<label class="full">Dodatkowe informacje do zamówienia<textarea name="customer_notes" maxlength="10000" placeholder="Ustalenia z klientem, wymagania, sposób przygotowania…"></textarea></label><label class="full">Notatki wewnętrzne<textarea name="internal_notes" maxlength="10000" placeholder="Informacje organizacyjne dla zespołu…"></textarea></label></div><div id="items-editor"></div><button type="button" id="add-item">＋ Dodaj kolejny produkt</button>${actions(editing?'Zapisz zmiany':'Przyjmij zamówienie')}</form>`,()=>{
+ openModal(editing?'Edytuj zamówienie · '+o.order_number:'Nowe zamówienie',`<form id="order-form"><div class="notice">${editing?'Uwaga: zmiana nakładu, terminu lub specyfikacji wpłynie na plan produkcji. Usuwanie elementów może anulować zadania i etapy zależne. Przed zapisem zobaczysz dokładne podsumowanie do zatwierdzenia. Raporty pozostaną w historii.':'Opisz produkty i ich części. Zadania oraz wykonawców zaplanujesz w karcie zamówienia.'}</div><fieldset data-order-fields style="border:0;padding:0;margin:0;min-width:0"><div class="form-grid"><label>Klient<select name="customer_id" required>${opts(state.data.customers)}</select><small>Nowego klienta dodasz w zakładce Klienci.</small></label>${field('title','Tytuł zamówienia','text','','required maxlength="255"')}${field('due_at','Termin realizacji (Twój czas lokalny)','datetime-local')}<label>Priorytet<select name="priority">${Object.entries(priorities).map(([v,l])=>`<option value="${v}" ${v==='normal'?'selected':''}>${l}</option>`).join('')}</select></label>${field('contact_name','Osoba kontaktowa','text','','maxlength="200"')}${field('contact_email','E-mail kontaktowy','email','','maxlength="254"')}${field('contact_phone','Telefon kontaktowy','tel','','maxlength="50"')}<label class="full">Dodatkowe informacje do zamówienia<textarea name="customer_notes" maxlength="10000" placeholder="Ustalenia z klientem, wymagania, sposób przygotowania…"></textarea></label><label class="full">Notatki wewnętrzne<textarea name="internal_notes" maxlength="10000" placeholder="Informacje organizacyjne dla zespołu…"></textarea></label></div><div id="items-editor"></div><button type="button" id="add-item">＋ Dodaj kolejny produkt</button></fieldset><section id="order-plan-preview" class="notice" hidden tabindex="-1" aria-labelledby="plan-preview-title"></section>${actions(editing?'Sprawdź zmiany w planie':'Przyjmij zamówienie')}</form>`,()=>{
   const form=$('#order-form'),root=$('#items-editor');
   const add=()=>{root.insertAdjacentHTML('beforeend',itemEditor());bindItem(root.lastElementChild);};$('#add-item').onclick=add;
   const contactDefaults=()=>{const c=state.data.customers.find(c=>+c.id===+form.elements.customer_id.value);form.elements.contact_email.value=c?.email??'';form.elements.contact_phone.value=c?.phone??'';};
@@ -52,9 +52,21 @@ function openOrderEditor(detail=null,focus=null){
    if(o.due_at){const time=new Date(o.due_at.replace(' ','T')+'Z');form.elements.due_at.value=new Date(time.getTime()-time.getTimezoneOffset()*60000).toISOString().slice(0,16);}
    for(const item of detail.items)restoreItem(root,item);
   }else{contactDefaults();add();}
+  const finish=async(data)=>{
+   const r=await api(editing?'update_order':'create_order',data);$('#modal').close();notify(editing?'Zapisano zamówienie i zatwierdzone zmiany planu.':'Zamówienie przyjęte. Zaplanuj etapy produkcji.');location.hash='order/'+r.id;await refresh();
+  };
   submitForm(form,async()=>{
-   const data=collectOrder(form);if(editing){data.id=o.id;data.version=o.version;}
-   const r=await api(editing?'update_order':'create_order',data);$('#modal').close();notify(editing?'Zapisano dane zamówienia i części.':'Zamówienie przyjęte. Zaplanuj etapy produkcji.');location.hash='order/'+r.id;await refresh();
+   const data=collectOrder(form);if(!editing){await finish(data);return;}
+   data.id=o.id;data.version=o.version;
+   const preview=await api('preview_order_update',data),panel=$('#order-plan-preview',form),fields=$('[data-order-fields]',form),submit=$('button[type=submit]',form);
+   fields.disabled=true;submit.hidden=true;
+   panel.innerHTML=`<h3 id="plan-preview-title">Sprawdź i zatwierdź zmiany</h3><p>Zmiany obejmą ${preview.task_count} zadań. Terminy poniżej są podane w UTC. Sam podgląd nie zapisuje zmian.</p>${preview.changes.length?`<ul>${preview.changes.map(change=>`<li>${esc(change)}</li>`).join('')}</ul>`:'<p>Brak zmian w danych i planie produkcji.</p>'}<p>Nowa rewizja technologiczna oznacza ponowne wykonanie według zmienionej specyfikacji. Stare raporty pozostają w historii i nie zwiększają wykonania tej rewizji. Dodane produkty, części i cechy wymagają doboru operacji i wykonawców w karcie zamówienia.</p><div class="form-actions"><button type="button" id="back-to-order">Wróć do edycji</button><button type="button" class="primary" id="confirm-order-plan">Zatwierdź i zapisz zmiany</button></div>`;
+   panel.hidden=false;panel.focus();panel.scrollIntoView({block:'start'});
+   $('#back-to-order',panel).onclick=()=>{fields.disabled=false;submit.hidden=false;panel.hidden=true;$('.error',form).textContent='';};
+   $('#confirm-order-plan',panel).onclick=async()=>{
+    const buttons=$$('button',panel);buttons.forEach(b=>b.disabled=true);$('.error',form).textContent='';
+    try{await finish({...data,confirmation_token:preview.confirmation_token});}catch(error){$('.error',form).textContent=error.message;}finally{buttons.forEach(b=>b.disabled=false);}
+   };
   });
   if(focus){const target=$(`[data-${focus.type}-id="${focus.id}"]`,form);target?.scrollIntoView({block:'start'});}
  });

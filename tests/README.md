@@ -1,6 +1,6 @@
 # Testy deweloperskie
 
-Od wydania 1.0.0 instalacja użytkowa jest produkcyjna. Nie uruchamiaj na niej testów — zapisują dane lub celowo symulują błędy migracji. Używaj oddzielnego projektu Compose, APP_DATA_DIR i portu. Testy API i przeglądarkowe wymagają jawnego `ARKUSZ_ALLOW_TEST_DATA=1`; `ARKUSZ_TEST_URL` i `ARKUSZ_TEST_PASSWORD` pozwalają wskazać konto osobnej instalacji. Nie przekazuj hasła jako argumentu procesu ani nie zapisuj go w kodzie.
+Niezależnie od testowego charakteru aplikacji zachowuj dane istniejącej instalacji użytkowej. Nie uruchamiaj na niej testów — zapisują dane lub celowo symulują błędy migracji. Używaj oddzielnego projektu Compose, APP_DATA_DIR i portu. Testy API i przeglądarkowe wymagają jawnego `ARKUSZ_ALLOW_TEST_DATA=1`; `ARKUSZ_TEST_URL` i `ARKUSZ_TEST_PASSWORD` pozwalają wskazać konto osobnej instalacji. Nie przekazuj hasła jako argumentu procesu ani nie zapisuj go w kodzie.
 
 `smoke.py`, `dictionaries.py`, `orders.py` i `themes.py` sprawdzają lokalną aplikację na porcie 8080; wymagają `.env` z `ADMIN_PASSWORD` pasującym do konta administratora. Przy instalacji Compose użyj odczytanego hasła z `app_data/config/admin-password`, nie zakładaj wspólnego hasła domyślnego. `orders.py` wykonuje również bazowy przebieg `smoke.py`. `browser.py` wymaga zastanego modułu Python `websockets`, Chrome z CDP na porcie 9223 i lokalnego `.env`. Te narzędzia nie są zależnościami uruchomieniowymi aplikacji.
 
@@ -32,4 +32,6 @@ Przykład jawnego uruchomienia testu API na odseparowanej instalacji (hasło prz
 ARKUSZ_ALLOW_TEST_DATA=1 ARKUSZ_TEST_URL=http://127.0.0.1:18080 python3 tests/smoke.py
 ```
 
-Pełne testy przeglądarkowe zakładają demonstracyjny produkt z etapami w izolowanej kopii bazy; nie uruchamiaj ich na nowej pustej produkcji. Świeża produkcja tworzy jedynie administratora i słowniki.
+Pełne testy przeglądarkowe zakładają demonstracyjny produkt z etapami w izolowanej kopii bazy; nie uruchamiaj ich na nowej pustej instalacji. Świeża instalacja tworzy jedynie administratora i słowniki.
+
+Wydanie 1.1: `orders.py` testuje podgląd bez utrwalania zmian, wymagane potwierdzenie, konflikty z raportem i nowym zadaniem, proporcjonalne ilości, terminy, rewizje wykonania, archiwizację i anulowanie następników. `browser.py` obejmuje podgląd, powrót do edycji i potwierdzenie. `migrations.py` dobiera kolejny numer testowej migracji względem bieżącego wydania.

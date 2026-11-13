@@ -1,8 +1,8 @@
 {
   "name": "Arkusz",
-  "version": "1.0.0",
-  "api_version": "1.0",
-  "schema_version": 1,
-  "channel": "production",
+  "version": "1.1.0",
+  "api_version": "1.1",
+  "schema_version": 2,
+  "channel": "test",
   "released_at": "2026-11-13"
 }

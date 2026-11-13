@@ -18,7 +18,7 @@ def health(expected):
  except urllib.error.HTTPError as e:code=e.code
  assert code==expected,(code,expected)
 counts=php('require "/var/www/db.php";echo json_encode([one("SELECT COUNT(*) n FROM orders"),one("SELECT COUNT(*) n FROM users"),one("SELECT COUNT(*) n FROM production_reports")]);')
-baseline=root/'migrations/0001_baseline.php';original=baseline.read_bytes();release=root/'release.json';original_release=release.read_bytes();fixture=root/'migrations/0002_test.php'
+baseline=root/'migrations/0001_baseline.php';original=baseline.read_bytes();release=root/'release.json';original_release=release.read_bytes();current=json.loads(original_release);next_version=int(current['schema_version'])+1;next_release_version='1.1.1';fixture=root/f'migrations/{next_version:04d}_test.php'
 migrate();migrate();health(200)
 try:
  baseline.write_bytes(original+b'\n// Zmieniony zastosowany plik testowy.\n');migrate(False);health(503)
@@ -29,35 +29,35 @@ for status in ['running','failed']:
 health(200)
 # Symulowana kolejna wersja tylko na kopii aplikacji i bazy testowej.
 try:
- fixture.write_text('''<?php
-return ['version'=>2,'release'=>'1.0.1','name'=>'Test kolejnego wydania','up'=>static function(): void {
+ fixture.write_text(('''<?php
+return ['version'=>NEXT_VERSION,'release'=>'NEXT_RELEASE','name'=>'Test kolejnego wydania','up'=>static function(): void {
  db()->exec("CREATE TABLE IF NOT EXISTS migration_probe(id INT PRIMARY KEY)");
  db()->exec("INSERT INTO migration_probe(id) VALUES(1)");
 }];
-''')
- next_release=json.loads(original_release);next_release.update(version='1.0.1',schema_version=2);release.write_text(json.dumps(next_release))
+''').replace('NEXT_VERSION',str(next_version)).replace('NEXT_RELEASE',next_release_version))
+ next_release=json.loads(original_release);next_release.update(version=next_release_version,schema_version=next_version);release.write_text(json.dumps(next_release))
  migrate();migrate();health(200)
  assert php('require "/var/www/db.php";echo one("SELECT COUNT(*) n FROM migration_probe")["n"];')==b'1'
  # Stary program nie może zostać uruchomiony na zaktualizowanej bazie.
  release.write_bytes(original_release);fixture.unlink();migrate(False);health(503)
 finally:
  release.write_bytes(original_release);fixture.unlink(missing_ok=True)
- sql('DROP TABLE IF EXISTS migration_probe');sql('DELETE FROM schema_migrations WHERE version=2')
+ sql('DROP TABLE IF EXISTS migration_probe');sql('DELETE FROM schema_migrations WHERE version='+str(next_version))
 # Rzeczywisty błąd po DDL pozostawia failed, a nie udaje rollbacku.
 try:
- fixture.write_text('''<?php
-return ['version'=>2,'release'=>'1.0.1','name'=>'Test przerwanej zmiany','up'=>static function(): void {
+ fixture.write_text(('''<?php
+return ['version'=>NEXT_VERSION,'release'=>'NEXT_RELEASE','name'=>'Test przerwanej zmiany','up'=>static function(): void {
  db()->exec("CREATE TABLE IF NOT EXISTS migration_failure_probe(id INT PRIMARY KEY)");
  throw new RuntimeException('Kontrolowany błąd testowy po DDL');
 }];
-''')
- next_release=json.loads(original_release);next_release.update(version='1.0.1',schema_version=2);release.write_text(json.dumps(next_release))
+''').replace('NEXT_VERSION',str(next_version)).replace('NEXT_RELEASE',next_release_version))
+ next_release=json.loads(original_release);next_release.update(version=next_release_version,schema_version=next_version);release.write_text(json.dumps(next_release))
  migrate(False);health(503)
- assert php('require "/var/www/db.php";echo one("SELECT status FROM schema_migrations WHERE version=2")["status"];')==b'failed'
+ assert php('require "/var/www/db.php";echo one("SELECT status FROM schema_migrations WHERE version='+str(next_version)+'")["status"];')==b'failed'
  migrate(False)
 finally:
  release.write_bytes(original_release);fixture.unlink(missing_ok=True)
- sql('DROP TABLE IF EXISTS migration_failure_probe');sql('DELETE FROM schema_migrations WHERE version=2')
+ sql('DROP TABLE IF EXISTS migration_failure_probe');sql('DELETE FROM schema_migrations WHERE version='+str(next_version))
 migrate();health(200)
 assert counts==php('require "/var/www/db.php";echo json_encode([one("SELECT COUNT(*) n FROM orders"),one("SELECT COUNT(*) n FROM users"),one("SELECT COUNT(*) n FROM production_reports")]);')
-print('OK: idempotencja, sumy kontrolne, blokada running/failed, symulowana aktualizacja 1.0.0→1.0.1, blokada cofnięcia i zachowanie danych.')
+print('OK: idempotencja, sumy kontrolne, blokada running/failed, symulowana aktualizacja kolejnego wydania, blokada cofnięcia i zachowanie danych.')

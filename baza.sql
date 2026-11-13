@@ -1,4 +1,4 @@
--- Arkusz 1.0.0 — kompletny schemat bazy, rewizja 1.
+-- Arkusz 1.1.0 — kompletny schemat bazy, rewizja 2.
 -- Historia zastosowania jest zapisywana przez wersjonowane migracje aplikacji.
 -- Uruchamiać w wybranej, pustej bazie danych. Celowo bez DROP TABLE.
 -- Wszystkie daty i godziny aplikacja zapisuje w UTC.
@@ -104,6 +104,8 @@ CREATE TABLE orders (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE order_items (
+    -- Element wycofany ze specyfikacji pozostaje dostępny w historii.
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT UNSIGNED NOT NULL,
     line_number SMALLINT UNSIGNED NOT NULL,
@@ -125,6 +127,8 @@ CREATE TABLE order_items (
 -- Np. środek, okładka, wkładka. Strony i kolory opisują tę część produktu.
 -- 0 oznacza stronę niezadrukowaną; offset: 1–5, cyfra: bw lub full_color.
 CREATE TABLE item_components (
+    -- Element wycofany ze specyfikacji pozostaje dostępny w historii.
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_item_id BIGINT UNSIGNED NOT NULL,
     name VARCHAR(150) NOT NULL,
@@ -178,6 +182,8 @@ CREATE TABLE operation_types (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE production_tasks (
+    -- Raporty poprzednich specyfikacji nie zwiększają wykonania nowej rewizji.
+    plan_revision INT UNSIGNED NOT NULL DEFAULT 1,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_item_id BIGINT UNSIGNED NOT NULL,
     component_id BIGINT UNSIGNED,
@@ -208,6 +214,8 @@ CREATE TABLE production_tasks (
 -- Raporty przyrostowe: ilości z danego raportu, nie liczniki narastające.
 -- Suma raportów daje wykonanie zadania. Status zmienia API w tej samej transakcji.
 CREATE TABLE production_reports (
+    -- Raporty poprzednich specyfikacji nie zwiększają wykonania nowej rewizji.
+    plan_revision INT UNSIGNED NOT NULL DEFAULT 1,
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT UNSIGNED NOT NULL,
     reported_by BIGINT UNSIGNED NOT NULL,
@@ -318,7 +326,7 @@ CREATE TABLE task_dependencies (
 CREATE TABLE task_status_history (
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, task_id BIGINT UNSIGNED NOT NULL,
  old_status VARCHAR(30), new_status VARCHAR(30) NOT NULL,
- event_type ENUM('status','assignment','created') NOT NULL DEFAULT 'status',
+ event_type ENUM('status','assignment','created','plan') NOT NULL DEFAULT 'status',
  changed_by BIGINT UNSIGNED NOT NULL, changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
  reason TEXT, FOREIGN KEY(task_id) REFERENCES production_tasks(id),
  FOREIGN KEY(changed_by) REFERENCES users(id), INDEX(task_id,changed_at)
@@ -336,11 +344,15 @@ CREATE TABLE feature_parameter_definitions (
  UNIQUE(feature_type_id,code), FOREIGN KEY(feature_type_id) REFERENCES feature_types(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE item_features (
+    -- Element wycofany ze specyfikacji pozostaje dostępny w historii.
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, order_item_id BIGINT UNSIGNED NOT NULL,
  feature_type_id BIGINT UNSIGNED NOT NULL, notes TEXT,
  FOREIGN KEY(order_item_id) REFERENCES order_items(id), FOREIGN KEY(feature_type_id) REFERENCES feature_types(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE component_features (
+    -- Element wycofany ze specyfikacji pozostaje dostępny w historii.
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, component_id BIGINT UNSIGNED NOT NULL,
  feature_type_id BIGINT UNSIGNED NOT NULL, notes TEXT,
  FOREIGN KEY(component_id) REFERENCES item_components(id), FOREIGN KEY(feature_type_id) REFERENCES feature_types(id)
@@ -384,4 +396,18 @@ CREATE TABLE schema_migrations (
     status ENUM('running', 'applied', 'failed') NOT NULL,
     started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     applied_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Audyt potwierdzonych zmian; zachowuje specyfikację i plan sprzed edycji.
+CREATE TABLE order_change_history (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ order_id BIGINT UNSIGNED NOT NULL,
+ changed_by BIGINT UNSIGNED NOT NULL,
+ changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ changes JSON NOT NULL,
+ previous_snapshot JSON NOT NULL,
+ accepted_specification JSON NOT NULL,
+ FOREIGN KEY(order_id) REFERENCES orders(id),
+ FOREIGN KEY(changed_by) REFERENCES users(id),
+ INDEX idx_order_changes(order_id,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

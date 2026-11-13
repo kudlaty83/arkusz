@@ -1,4 +1,4 @@
-# Instalacja i aktualizacja Arkusza 1.0
+# Instalacja i aktualizacja Arkusza 1.1
 
 Instrukcja dla osoby uruchamiającej własną drukarnię w aplikacji. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
 
@@ -58,7 +58,7 @@ docker compose exec web cat /run/arkusz-secrets/admin-password
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.0.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.1.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -193,6 +193,8 @@ Nie wykonuj tego na działającej bazie z danymi, które chcesz zachować. Użyj
 Używane będą konta i hasła zapisane w kopii. Po odtworzeniu sprawdź zamówienia, role i możliwość logowania.
 
 ## Aktualizacja
+
+Wersja 1.1.0 aktualizuje instalację 1.0 migracją 0002 do schematu 2, zachowując konta, zamówienia, przydziały i raporty. Dotychczasowe zadania i raporty należą do rewizji planu 1. Po aktualizacji edycja wymaga podglądu i osobnego potwierdzenia zmian. Szczegółowe reguły przeliczania opisuje [README.md](README.md#edycja-i-historia).
 
 Zrób kopię bazy i haseł. Pobierz nową wersję źródeł do tego samego katalogu, zachowując cały `app_data` i opcjonalny `.env`. Zatrzymaj serwer WWW na czas aktualizacji schematu:
 

@@ -1,7 +1,7 @@
 name: arkusz
 services:
   setup:
-    image: localhost/arkusz-app:1.0.0
+    image: localhost/arkusz-app:1.1.0
     build:
       context: .
       dockerfile: Containerfile
@@ -66,7 +66,7 @@ services:
       retries: 30
       start_period: 20s
   web:
-    image: localhost/arkusz-app:1.0.0
+    image: localhost/arkusz-app:1.1.0
     build:
       context: .
       dockerfile: Containerfile

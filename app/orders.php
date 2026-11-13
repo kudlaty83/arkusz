@@ -12,19 +12,17 @@ function retainedReference(string $table,int $id,mixed $oldId): array {
 function syncFeatures(int $item,?int $component,array $features): void {
  if(count($features)>100)fail('Zbyt wiele cech.');
  $prefix=$component?'component':'item';$owner=$component?'component_id':'order_item_id';
- $old=rows("SELECT id FROM {$prefix}_features WHERE $owner=?",[$component??$item]);$seen=[];
+ $old=rows("SELECT id FROM {$prefix}_features WHERE $owner=? AND is_archived=0",[$component??$item]);$seen=[];
  foreach($features as $f){
   if(isset($f['id'])&&in_array((int)$f['id'],$seen,true))fail('Powielona cecha.');
   $seen[]=feature($item,$component,$f);
  }
  foreach($old as $f)if(!in_array((int)$f['id'],$seen,true)){
-  if(one("SELECT task_id FROM task_{$prefix}_features WHERE {$prefix}_feature_id=? LIMIT 1",[$f['id']]))fail('Nie można usunąć cechy powiązanej z zadaniem produkcyjnym.');
-  run("DELETE FROM {$prefix}_feature_values WHERE {$prefix}_feature_id=?",[$f['id']]);
-  run("DELETE FROM {$prefix}_features WHERE id=?",[$f['id']]);
+  run("UPDATE {$prefix}_features SET is_archived=1 WHERE id=?",[$f['id']]);
  }
 }
 
-function saveOrder(array $data,bool $editing,int $userId): int {
+function saveOrder(array $data,bool $editing,int $userId,bool $preview=false): int|array {
   permit('orders.edit');
   if(empty($data['items'])||!is_array($data['items'])||count($data['items'])>50) fail('Dodaj od 1 do 50 produktów.');
   $customer=reference('customers',integer($data,'customer_id')); $title=text($data,'title');
@@ -36,6 +34,15 @@ function saveOrder(array $data,bool $editing,int $userId): int {
    $id=integer($data,'id');
    $previous=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$id])??fail('Brak zamówienia.',404);
    if((int)$previous['version']!==integer($data,'version'))fail('Zamówienie zmieniła inna osoba. Odśwież widok i ponów edycję.',409);
+   $snapshot=orderPlanSnapshot($id);$plan=buildOrderPlan($snapshot,$data);
+   if($plan['tasks'])permit('tasks.manage');
+   $specification=$data;unset($specification['confirmation_token']);
+   $fingerprint=hash('sha256',json_encode([$specification,$snapshot,$plan],JSON_THROW_ON_ERROR));
+   if(!$preview){
+    $approval=$_SESSION['order_plan_approval'][$id]??null;
+    if(!$approval||!hash_equals($approval['token'],(string)($data['confirmation_token']??''))||!hash_equals($approval['fingerprint'],$fingerprint)||$approval['expires']<time())fail('Plan lub formularz zmienił się od podglądu. Sprawdź ponownie podsumowanie i zatwierdź zmiany.',409);
+   }
+
   }
 
   $status=one("SELECT id FROM order_statuses WHERE code='new'")['id'];
@@ -47,14 +54,14 @@ function saveOrder(array $data,bool $editing,int $userId): int {
   }else $id=insert('orders',$header);
   if(!$editing)run('UPDATE orders SET order_number=? WHERE id=?',['Z/'.date('Y').'/'.str_pad((string)$id,5,'0',STR_PAD_LEFT),$id]);
   insert('order_status_history',['order_id'=>$id,'old_status_id'=>$previous['status_id']??null,'new_status_id'=>$previous['status_id']??$status,'changed_by'=>$userId,'reason'=>$editing?'Edycja danych i specyfikacji zamówienia':'Przyjęcie zamówienia']);
-  $existingItems=$editing?rows('SELECT * FROM order_items WHERE order_id=? ORDER BY line_number',[$id]):[];
-  $seenItems=[];$nextLine=count($existingItems);
+  $existingItems=$editing?rows('SELECT * FROM order_items WHERE order_id=? AND is_archived=0 ORDER BY line_number',[$id]):[];
+  $seenItems=[];$nextLine=$editing?(int)one('SELECT COALESCE(MAX(line_number),0) n FROM order_items WHERE order_id=?',[$id])['n']:0;
   foreach($data['items'] as $idx=>$item) {
    $oldItem=null;
    if(isset($item['id'])){
     if(!$editing)fail('Nowe zamówienie nie może zawierać istniejących produktów.');
     $oldItem=reference('order_items',integer($item,'id'));
-    if((int)$oldItem['order_id']!==$id||in_array((int)$oldItem['id'],$seenItems,true))fail('Nieprawidłowe powiązanie produktu.');
+    if((int)$oldItem['is_archived']||(int)$oldItem['order_id']!==$id||in_array((int)$oldItem['id'],$seenItems,true))fail('Nieprawidłowe powiązanie produktu.');
     $seenItems[]=(int)$oldItem['id'];
    }
 
@@ -63,14 +70,14 @@ function saveOrder(array $data,bool $editing,int $userId): int {
    if($oldItem){$itemId=(int)$oldItem['id'];updateRecord('order_items',$itemId,$itemFields);}else $itemId=insert('order_items',$itemFields);
    syncFeatures($itemId,null,$item['features']??[]);
    if(empty($item['components'])||count($item['components'])>50) fail('Produkt wymaga od 1 do 50 części.');
-   $oldComponents=$oldItem?rows('SELECT id FROM item_components WHERE order_item_id=?',[$itemId]):[];
+   $oldComponents=$oldItem?rows('SELECT id FROM item_components WHERE order_item_id=? AND is_archived=0',[$itemId]):[];
    $seenComponents=[];
    foreach($item['components'] as $ci=>$c){
     $oldComponent=null;
     if(isset($c['id'])){
      if(!$oldItem)fail('Nowy produkt nie może zawierać istniejących części.');
      $oldComponent=reference('item_components',integer($c,'id'));
-     if((int)$oldComponent['order_item_id']!==$itemId||in_array((int)$oldComponent['id'],$seenComponents,true))fail('Nieprawidłowe powiązanie części.');
+     if((int)$oldComponent['is_archived']||(int)$oldComponent['order_item_id']!==$itemId||in_array((int)$oldComponent['id'],$seenComponents,true))fail('Nieprawidłowe powiązanie części.');
      $seenComponents[]=(int)$oldComponent['id'];
     }
 
@@ -82,8 +89,22 @@ function saveOrder(array $data,bool $editing,int $userId): int {
     if($tech==='offset') foreach(['front'=>$front,'back'=>$back] as $side=>$count){ $names=$c[$side.'_inks']??[]; if(count($names)!==$count) fail('Podaj nazwy wszystkich farb.'); foreach($names as $n=>$ink) insert('component_inks',['component_id'=>$cid,'side'=>$side,'ink_number'=>$n+1,'ink_name'=>text(['ink'=>$ink],'ink',100)]); }
     syncFeatures($itemId,$cid,$c['features']??[]);
    }
-   foreach($oldComponents as $old)if(!in_array((int)$old['id'],$seenComponents,true))fail('Istniejące części muszą pozostać w zamówieniu. Możesz je edytować.');
+   foreach($oldComponents as $old)if(!in_array((int)$old['id'],$seenComponents,true))run('UPDATE item_components SET is_archived=1 WHERE id=?',[$old['id']]);
   }
-  foreach($existingItems as $old)if(!in_array((int)$old['id'],$seenItems,true))fail('Istniejące produkty muszą pozostać w zamówieniu. Możesz je edytować.');
+  foreach($existingItems as $old)if(!in_array((int)$old['id'],$seenItems,true))run('UPDATE order_items SET is_archived=1 WHERE id=?',[$old['id']]);
+  if($editing){
+   applyOrderPlan($plan,$userId);
+   if($plan['order_status_id']!==null){
+    run('UPDATE orders SET status_id=?,completed_at=NULL WHERE id=?',[$plan['order_status_id'],$id]);
+    insert('order_status_history',['order_id'=>$id,'old_status_id'=>$previous['status_id'],'new_status_id'=>$plan['order_status_id'],'changed_by'=>$userId,'reason'=>'Ponowne otwarcie produkcji po zatwierdzonej zmianie planu']);
+   }
+   if($preview){
+    db()->rollBack();$token=bin2hex(random_bytes(32));
+    $_SESSION['order_plan_approval'][$id]=['token'=>$token,'fingerprint'=>$fingerprint,'expires'=>time()+900];
+    return ['changes'=>$plan['changes'],'confirmation_token'=>$token,'task_count'=>count($plan['tasks'])];
+   }
+   insert('order_change_history',['order_id'=>$id,'changed_by'=>$userId,'changes'=>json_encode($plan['changes'],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),'previous_snapshot'=>json_encode($snapshot,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),'accepted_specification'=>json_encode($specification,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
+   unset($_SESSION['order_plan_approval'][$id]);
+  }
   db()->commit();return $id;
 }

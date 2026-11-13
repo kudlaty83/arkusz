@@ -2,7 +2,9 @@
 
 Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pracy drukarni: od ustaleń z klientem, przez przygotowalnię i druk, po introligatornię i wydanie. Interfejs jest w języku polskim. Aplikacja działa jako strona internetowa i może być instalowana w Chrome jako PWA.
 
-Wydanie produkcyjne **1.0.0**. API: **1.0**. Schemat bazy: **rewizja 1**. Kod powstał z użyciem generatywnej AI. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
+**Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
+
+Wersja **1.0.0** oznacza początek wersjonowania, a nie deklarację gotowości produkcyjnej. API: **1.0**. Schemat bazy: **rewizja 1**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
 **Instalacja, pierwsze logowanie, kopie zapasowe i aktualizacje: [install.md](install.md).**
 
@@ -62,7 +64,7 @@ Wpisy można dodawać, edytować oraz, jeśli mają pole aktywności, wyłącza�
 
 Każdy użytkownik wybiera własny motyw: **Zielony**, **Beżowy**, **Jasny beż**, **Szary** lub **Czarny**. Wybór oferuje podgląd, a zapisane ustawienie odtwarza się po zalogowaniu na innym urządzeniu.
 
-Interfejs dostosowuje się do mniejszych ekranów. PWA otwiera aplikację w osobnym oknie. Praca z zamówieniami i zapisy wymagają połączenia z serwerem; zamówienia nie są przechowywane w pamięci podręcznej przeglądarki do pracy offline.
+Interfejs dostosowuje się do mniejszych ekranów. **Aplikację można zainstalować także na telefonie jako PWA** — na Androidzie oraz na iPhonie przez dodanie do ekranu początkowego. PWA otwiera aplikację w osobnym oknie. Telefon musi mieć dostęp do serwera przez HTTPS; instrukcja znajduje się w [install.md](install.md#dostęp-z-innych-urządzeń-i-instalacja-na-telefonie). Praca z zamówieniami i zapisy wymagają połączenia z serwerem; zamówienia nie są przechowywane w pamięci podręcznej przeglądarki do pracy offline.
 
 ## Technologia i obecne ograniczenia
 

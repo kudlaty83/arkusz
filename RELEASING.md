@@ -1,6 +1,6 @@
-# Utrzymanie wydań produkcyjnych
+# Utrzymanie wersjonowanych wydań
 
-Wersja 1.0.0 jest punktem odniesienia produkcji. Nie wolno resetować bazy użytkowej podczas wdrożenia ani wykonywać na niej testów zapisujących fikcyjne dane. Kopie i dane uruchomieniowe pozostają poza Git.
+Aplikacja jest testowym prototypem, powstałym w większości z użyciem AI, przeznaczonym do kontaktu i dalszego rozwoju. Wersja 1.0.0 jest punktem odniesienia dla kolejnych aktualizacji, a nie deklaracją kompletności lub gotowości produkcyjnej. Mimo testowego charakteru projektu aktualizacje muszą zachowywać dane istniejących instalacji. Nie wolno resetować bazy użytkowej podczas wdrożenia ani wykonywać na niej testów zapisujących fikcyjne dane. Kopie i dane uruchomieniowe pozostają poza Git.
 
 ## Kontrakt wydania
 
@@ -24,4 +24,4 @@ Nie usuwaj wiersza ani nie przepisuj sumy, aby „naprawić” start. Zatrzymaj 
 
 Przed zmianą źródeł wykonaj zrzut bazy oraz archiwum `config`, zapisz numery używanych wersji i sprawdź możliwość odtworzenia. Zatrzymaj WWW przed uruchomieniem nowego `setup`, ponieważ odświeża on pliki aplikacji na bind mouncie. Zachowaj ten sam `APP_DATA_DIR` i projekt Compose. Procedura użytkownika jest w `install.md`.
 
-Przy braku publicznej domeny aplikacja pozostaje na localhost. Oznaczenie wydania jako produkcyjnego nie oznacza przeprowadzenia zewnętrznego audytu bezpieczeństwa ani przygotowania konfiguracji publicznego hostingu.
+Przy braku publicznej domeny aplikacja pozostaje na localhost. Projekt nie deklaruje gotowości produkcyjnej, przeprowadzenia zewnętrznego audytu bezpieczeństwa ani przygotowania konfiguracji publicznego hostingu.

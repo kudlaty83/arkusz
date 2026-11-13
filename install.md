@@ -58,7 +58,7 @@ docker compose exec web cat /run/arkusz-secrets/admin-password
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To wydanie produkcyjne 1.0.0. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.0.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -127,13 +127,19 @@ docker compose up -d --build --wait
 
 Adres będzie wtedy **http://localhost:8081**. Dla wielu instalacji ustaw osobne `APP_DATA_DIR`, porty oraz nazwy projektów (`docker compose -p nazwa ...`). Sama zmiana `-p` nie zmienia wskazanego katalogu danych. Zawsze używaj tego samego `APP_DATA_DIR`; wskazanie pustej lokalizacji oznacza nową instalację. Przenosząc katalog, zatrzymaj wszystkie usługi i przenieś całość z zachowaniem właścicieli i uprawnień.
 
-## Dostęp z innych komputerów i instalacja w Chrome
+## Dostęp z innych urządzeń i instalacja na telefonie
 
 Domyślna konfiguracja wystawia aplikację wyłącznie na `127.0.0.1`, a baza nie wystawia portu na komputerze. To instalacja lokalna.
 
 Udostępnienie w sieci wymaga własnej konfiguracji domeny, reverse proxy i HTTPS. Nie wystarczy przekazać innym osobom adresu `localhost`, który zawsze oznacza ich własny komputer. Aplikacja nie dostarcza gotowej konfiguracji publicznego hostingu.
 
-Na localhost Chrome może zaproponować instalację PWA z menu przeglądarki lub przycisku aplikacji. Na zwykłej domenie potrzebne jest HTTPS. Instalacja PWA nie zastępuje działającego serwera; zapisy wymagają połączenia.
+Aplikację można zainstalować jako PWA na komputerze i na telefonie:
+
+- **Android:** otwórz stronę aplikacji w Chrome i użyj opcji instalacji lub dodania do ekranu głównego w menu przeglądarki.
+- **iPhone:** otwórz stronę w Safari i w menu udostępniania wybierz dodanie do ekranu początkowego.
+- **Komputer:** na localhost Chrome może zaproponować instalację z menu przeglądarki lub przycisku aplikacji.
+
+Dla telefonu udostępnij serwer pod osiągalnym adresem HTTPS. Adres `localhost` na telefonie wskazuje sam telefon, a nie komputer z aplikacją. Domyślna konfiguracja Compose nasłuchuje tylko na komputerze serwera, więc samo uruchomienie kontenerów nie zapewnia dostępu z telefonu. Instalacja PWA nie zastępuje działającego serwera; zamówienia i zapisy wymagają połączenia.
 
 ## Kopie zapasowe
 
@@ -201,9 +207,9 @@ Wydanie 1.0.0 przypina obrazy **`php:8.4.27-apache`** i **`mariadb:13.0.2`**. Ni
 
 Aktualizację wersji silnika wprowadza nowe, przetestowane wydanie programu. Nie podmieniaj samodzielnie tagu bazy na nowszy ani starszy na tym samym katalogu danych. Aktualizacja struktury aplikacji i aktualizacja silnika to odrębne operacje. Same poprawki obrazu pod tym samym tagiem również sprawdź na kopii przed odtworzeniem usług.
 
-### Pierwsze przejście z wersji przedprodukcyjnej do 1.0
+### Pierwsze przejście z wcześniejszych wersji do 1.0
 
-Zachowaj `app_data` i zrób kopię bazy oraz konfiguracji według instrukcji powyżej. Zatrzymaj WWW, pobierz źródła wydania 1.0 i uruchom aktualizację podaną wyżej. Migracja `0001_baseline.php` sprawdza istniejący schemat, uzupełnia dawną preferencję motywu w razie potrzeby i rejestruje schemat produkcyjny 1. Nie usuwa zamówień, kont ani raportów. Lokalna wcześniejsza baza używająca `latest` działała już na MariaDB 13.0.2, więc przypięcie tego samego wydania nie zmienia głównej wersji silnika. Dla innej wcześniejszej wersji MariaDB najpierw zaplanuj osobną migrację silnika na kopii.
+Zachowaj `app_data` i zrób kopię bazy oraz konfiguracji według instrukcji powyżej. Zatrzymaj WWW, pobierz źródła wydania 1.0 i uruchom aktualizację podaną wyżej. Migracja `0001_baseline.php` sprawdza istniejący schemat, uzupełnia dawną preferencję motywu w razie potrzeby i rejestruje wersjonowany schemat 1. Nie usuwa zamówień, kont ani raportów. Lokalna wcześniejsza baza używająca `latest` działała już na MariaDB 13.0.2, więc przypięcie tego samego wydania nie zmienia głównej wersji silnika. Dla innej wcześniejszej wersji MariaDB najpierw zaplanuj osobną migrację silnika na kopii.
 
 ### Kontrola wersji i migracji
 

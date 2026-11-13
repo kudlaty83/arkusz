@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Szablony i edycja etapów przez Chrome/CDP na osobnej instalacji."""
+import asyncio,base64,json,os,pathlib,secrets,urllib.request
+if os.environ.get('ARKUSZ_ALLOW_TEST_DATA')!='1' or not os.environ.get('ARKUSZ_TEST_URL'):raise SystemExit('Wymagana osobna instalacja testowa.')
+import websockets
+async def main():
+ page=next(p for p in json.load(urllib.request.urlopen('http://127.0.0.1:9223/json')) if p['type']=='page')
+ async with websockets.connect(page['webSocketDebuggerUrl'],max_size=10000000) as ws:
+  seq=0;errors=[]
+  async def cmd(method,params={}):
+   nonlocal seq
+   seq+=1;id=seq;await ws.send(json.dumps({'id':id,'method':method,'params':params}))
+   while True:
+    r=json.loads(await ws.recv())
+    if r.get('method')=='Runtime.exceptionThrown':errors.append(r['params'])
+    if r.get('id')==id:
+     if 'error' in r:raise RuntimeError(r['error'])
+     return r.get('result',{})
+  async def js(expr):
+   r=await cmd('Runtime.evaluate',{'expression':expr,'awaitPromise':True,'returnByValue':True})
+   if 'exceptionDetails' in r:raise RuntimeError(r['exceptionDetails'])
+   return r['result'].get('value')
+  async def wait(expr):
+   for _ in range(150):
+    if await js(expr):return
+    await asyncio.sleep(.1)
+   raise RuntimeError('Timeout: '+expr+'; '+str(await js("document.querySelector('.error')?.textContent")))
+  await cmd('Runtime.enable');await cmd('Page.enable');await cmd('Network.clearBrowserCookies')
+  await cmd('Emulation.setDeviceMetricsOverride',{'width':1440,'height':1000,'deviceScaleFactor':1,'mobile':False})
+  await cmd('Page.navigate',{'url':os.environ['ARKUSZ_TEST_URL']+'/'})
+  await wait("document.querySelector('#login-view') && !document.querySelector('#login-view').hidden")
+  await js("document.querySelector('[name=login]').value='admin';document.querySelector('[name=password]').value="+json.dumps(os.environ['ARKUSZ_TEST_PASSWORD'])+";document.querySelector('#login-form').requestSubmit()")
+  await wait("!document.querySelector('#app').hidden")
+  await js("location.hash='templates'");await wait("!!document.querySelector('#new-template')")
+  name='TEST Chrome etapy '+secrets.token_hex(4)
+  await js("window.stageTemplateName="+json.dumps(name)+";document.querySelector('#new-template').click();document.querySelector('#template-form [name=name]').value=stageTemplateName;document.querySelector('#template-form [name=component_type_id]').value=state.data.dictionaries.component_types.find(k=>k.code==='cover').id;document.querySelector('#template-form [name=print_technique]').value='digital';document.querySelector('[data-step-key=quantity_value]').value=1.5;document.querySelector('[data-step-key=quantity_unit]').value='ark.';document.querySelector('[data-step-key=days_before_due]').value=2;document.querySelector('#add-template-step').click();document.querySelectorAll('[data-step-key=quantity_mode]')[1].value='fixed';document.querySelectorAll('[data-step-key=quantity_value]')[1].value=3;document.querySelectorAll('[data-step-key=quantity_unit]')[1].value='próby';document.querySelector('#template-form').requestSubmit()")
+  await wait("!document.querySelector('#modal').open && document.querySelector('#template-results').textContent.includes(stageTemplateName)")
+  await js("(async()=>{window.stageTemplate=(await api('templates&q='+encodeURIComponent(stageTemplateName))).entries[0].id;location.hash='orders';})()")
+  await wait("!!document.querySelector('#new-order')");await js("document.querySelector('#new-order').click()")
+  await wait("!!document.querySelector('#customer-select').value")
+  await js("document.querySelector('#order-form [name=title]').value=stageTemplateName;document.querySelector('[data-item-key=name]').value='TEST Książka';document.querySelector('[data-item-key=quantity]').value=10;document.querySelector('[data-key=component_type_id]').value=state.data.dictionaries.component_types.find(k=>k.code==='cover').id;document.querySelector('#order-form [name=due_at]').value='2027-07-20T12:00';document.querySelector('#order-form').requestSubmit()")
+  await wait("!document.querySelector('#modal').open && !!document.querySelector('[data-apply-template]')")
+  await js("window.stageOrder=currentDetail.order.id;window.stageComponent=currentDetail.items[0].components[0].id;document.querySelector('[data-apply-template]').click()")
+  await wait("!!document.querySelector('#apply-template-select option[value=\"'+stageTemplate+'\"]')")
+  await js("document.querySelector('#apply-template-select').value=stageTemplate;document.querySelector('#apply-template-select').dispatchEvent(new Event('change'))")
+  await wait("document.querySelectorAll('#apply-template-details section').length===2")
+  await js("document.querySelector('#apply-template-form [name=step_assignees_1][value=\"'+state.data.user.id+'\"]').checked=true;document.querySelector('#apply-template-form').requestSubmit()")
+  await wait("!!document.querySelector('[data-accept-plan]')")
+  assert await js("document.querySelector('[data-confirm-plan]').textContent.includes('15 ark.') && state.tasks.filter(t=>+t.order_id===+stageOrder).length===0")
+  await cmd('Emulation.setDeviceMetricsOverride',{'width':390,'height':844,'deviceScaleFactor':1,'mobile':True})
+  assert await js("document.documentElement.scrollWidth<=window.innerWidth")
+  await js("document.querySelector('[data-back-plan]').click()")
+  assert await js("!document.querySelector('[data-plan-fields]').disabled")
+  await js("document.querySelector('#apply-template-form').requestSubmit()")
+  await wait("!document.querySelector('[data-confirm-plan]').hidden");await js("document.querySelector('[data-accept-plan]').click()")
+  await wait("!document.querySelector('#modal').open && state.tasks.filter(t=>+t.order_id===+stageOrder).length===2")
+  assert await js("(async()=>{window.stageTasks=state.tasks.filter(t=>+t.order_id===+stageOrder).sort((a,b)=>a.sequence_number-b.sequence_number);window.stageFirst=stageTasks[0].id;window.stageSecond=stageTasks[1].id;return stageTasks[0].planned_quantity===15 && stageTasks[1].planned_quantity===3 && (await api('task&id='+stageSecond)).depends_on[0]===stageFirst;})()")
+  await cmd('Emulation.setDeviceMetricsOverride',{'width':1440,'height':1000,'deviceScaleFactor':1,'mobile':False})
+  await js("document.querySelector('[data-edit-task=\"'+stageFirst+'\"]').click()")
+  await wait("document.querySelector('#modal').open && !!document.querySelector('#task-form')")
+  await js("document.querySelector('#task-form [name=planned_quantity]').value=20;document.querySelector('#task-form [name=instructions]').value='TEST instrukcje po edycji';document.querySelector('#task-form').requestSubmit()")
+  await wait("!!document.querySelector('[data-accept-plan]')")
+  assert await js("document.querySelector('[data-confirm-plan]').textContent.includes('15 → 20') && state.tasks.find(t=>+t.id===+stageFirst).planned_quantity===15")
+  await js("document.querySelector('[data-accept-plan]').click()")
+  await wait("!document.querySelector('#modal').open && state.tasks.find(t=>+t.id===+stageFirst).planned_quantity===20")
+  await js("(async()=>{const t=state.tasks.find(t=>+t.id===+stageFirst);window.stageOldOperation=t.operation_name;await api('report',{task_id:t.id,version:t.version,status_after:'in_progress',good_quantity:4,waste_quantity:0,work_minutes:5,notes:'TEST stara rewizja'});await refresh();document.querySelector('[data-edit-task=\"'+stageFirst+'\"]').click();})()")
+  await wait("document.querySelector('#modal').open && !!document.querySelector('#task-form')")
+  await js("document.querySelector('#task-form [name=operation_type_id]').value=state.data.dictionaries.operation_types.find(o=>+o.id!==+document.querySelector('#task-form [name=operation_type_id]').value&&+o.is_active).id;document.querySelector('#task-form').requestSubmit()")
+  await wait("!!document.querySelector('[data-accept-plan]')")
+  assert await js("document.querySelector('[data-confirm-plan]').textContent.includes('nowa rewizja 2')")
+  shot=await cmd('Page.captureScreenshot',{'format':'png'});pathlib.Path('/tmp/arkusz-task-edit.png').write_bytes(base64.b64decode(shot['data']))
+  await js("document.querySelector('[data-accept-plan]').click()")
+  await wait("!document.querySelector('#modal').open && state.tasks.find(t=>+t.id===+stageFirst).plan_revision===2")
+  assert await js("+state.tasks.find(t=>+t.id===+stageFirst).good_quantity===0 && state.tasks.find(t=>+t.id===+stageSecond).status==='blocked' && currentDetail.reports[0].operation_name===stageOldOperation")
+  await js("location.hash='templates'");await wait("!!document.querySelector('[data-edit-template=\"'+stageTemplate+'\"]')")
+  await js("document.querySelector('[data-edit-template=\"'+stageTemplate+'\"]').click()")
+  await wait("document.querySelector('#modal').open && !!document.querySelector('#template-form')")
+  await js("document.querySelector('[data-step-key=quantity_value]').value=10;document.querySelector('#template-form').requestSubmit()")
+  await wait("!document.querySelector('#modal').open")
+  assert await js("(async()=>{return (await api('tasks')).find(t=>+t.id===+stageFirst).planned_quantity===20})()")
+  await js("location.hash='order/'+stageOrder");await wait("!!document.querySelector('[data-apply-template]')");await js("document.querySelector('[data-apply-template]').click()")
+  await wait("!!document.querySelector('#apply-template-select option[value=\"'+stageTemplate+'\"]')")
+  await js("document.querySelector('#apply-template-select').value=stageTemplate;document.querySelector('#apply-template-form').requestSubmit()")
+  await wait("document.querySelector('#apply-template-form .error').textContent.includes('już zastosowany')")
+  await js("document.querySelector('#modal').close()")
+  assert not errors,errors
+  print('OK: Chrome — definicja dwuetapowego szablonu, rodzaj części, podgląd i zastosowanie, przydział i zależność, edycja ilości/operacji, rewizje i historyczne raporty, niezależność kopii, blokada duplikatu i układ mobilny.')
+asyncio.run(main())

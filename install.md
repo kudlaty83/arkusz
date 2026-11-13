@@ -1,4 +1,4 @@
-# Instalacja i aktualizacja Arkusza 1.2
+# Instalacja i aktualizacja Arkusza 1.3
 
 Instrukcja dla osoby uruchamiającej własną drukarnię w aplikacji. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
 
@@ -58,7 +58,7 @@ docker compose exec web cat /run/arkusz-secrets/admin-password
 
 Skopiuj wynik do pola hasła na stronie. Nie publikuj tego wyniku, plików haseł ani kopii bazy w repozytorium. Hasło jest lokalne dla tej instalacji; repozytorium nie zawiera wspólnego, domyślnego hasła administratora.
 
-W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.2.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
+W **Zespół** utwórz konta pracowników, wybierz role oraz stanowiska. W **Słowniki** dostosuj papiery, operacje i cechy do własnej drukarni. Utwórz pierwsze własne zamówienie. To testowy prototyp w wersji 1.3.0, powstały w większości z użyciem AI; wymaga samodzielnej oceny i dalszego rozwoju. Dane demonstracyjne są dostępne tylko po jawnym ustawieniu `SEED_DEMO=1` przy tworzeniu pustej bazy testowej; istniejące konta i zamówienia nigdy nie są przez to resetowane.
 
 ## Codzienne uruchamianie i zatrzymywanie
 
@@ -126,6 +126,12 @@ docker compose up -d --build --wait
 ```
 
 Adres będzie wtedy **http://localhost:8081**. Dla wielu instalacji ustaw osobne `APP_DATA_DIR`, porty oraz nazwy projektów (`docker compose -p nazwa ...`). Sama zmiana `-p` nie zmienia wskazanego katalogu danych. Zawsze używaj tego samego `APP_DATA_DIR`; wskazanie pustej lokalizacji oznacza nową instalację. Przenosząc katalog, zatrzymaj wszystkie usługi i przenieś całość z zachowaniem właścicieli i uprawnień.
+
+## Planowanie etapów i szablony
+
+Administrator uzupełnia **Słowniki → Rodzaje części**. Przy edycji zamówienia przypisz rodzaj do odpowiedniej części, np. Okładka. Planista w menu **Szablony etapów** definiuje operacje, stanowiska, ilości, terminy i zależności dla tego rodzaju części. W karcie części przycisk **Typowe etapy** pozwala wybrać pasujący szablon, przydzielić pracowników, sprawdzić podsumowanie i dodać etapy. Ten sam szablon może być zastosowany do danej części tylko raz; jego późniejsza edycja nie aktualizuje dawnych kopii.
+
+**Edytuj etap** otwiera plan istniejącego zadania. Najpierw użyj **Sprawdź zmiany**, potem **Zatwierdź i zapisz**. Przy zmianie specyfikacji wykonanie nowej rewizji jest liczone od zera, a poprzednie raporty pozostają w historii. Wstrzymane etapy wymagają sprawdzenia i wznowienia przez raport pracy. Szczegółowe reguły opisuje [README.md](README.md#edycja-etapów-produkcji).
 
 ## Zarządzanie klientami, kontami i hasłami
 
@@ -201,6 +207,8 @@ Nie wykonuj tego na działającej bazie z danymi, które chcesz zachować. Użyj
 Używane będą konta i hasła zapisane w kopii. Po odtworzeniu sprawdź zamówienia, role i możliwość logowania.
 
 ## Aktualizacja
+
+Wersja 1.3.0 wykonuje migrację 0005 do schematu 5. Dodaje słownik rodzajów części, szablony i ich etapy, rejestr zastosowania oraz audyt edycji zadań. Istniejące części mają pusty rodzaj, a dotychczasowe zadania i raporty pozostają zachowane. Nie zmieniaj już zastosowanych plików migracji.
 
 Wersja 1.2.0 wykonuje migrację 0004 do schematu 4: dodaje wersje klientów i kont, licznik sesji oraz indeksy. Zachowuje konta, hasła, zamówienia i przydziały. Dotychczasowych plików migracji nie należy zmieniać.
 

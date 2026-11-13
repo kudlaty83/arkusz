@@ -1,7 +1,7 @@
 name: arkusz
 services:
   setup:
-    image: localhost/arkusz-app:1.2.0
+    image: localhost/arkusz-app:1.3.0
     working_dir: /var/www
     build:
       context: .
@@ -67,7 +67,7 @@ services:
       retries: 30
       start_period: 20s
   web:
-    image: localhost/arkusz-app:1.2.0
+    image: localhost/arkusz-app:1.3.0
     working_dir: /var/www
     build:
       context: .

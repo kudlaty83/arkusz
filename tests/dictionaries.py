@@ -16,7 +16,7 @@ class Client:
   self.call('login',{'login':login,'password':password});b=self.call('bootstrap');self.csrf=b['csrf'];return b
 admin=Client();admin.call('dictionary_catalog',status=401)
 env=dict(line.split('=',1) for line in (pathlib.Path('.env').read_text() if pathlib.Path('.env').exists() else 'ADMIN_PASSWORD=').splitlines())
-b=admin.login('admin',os.environ.get('ARKUSZ_TEST_PASSWORD',env['ADMIN_PASSWORD']));tag=secrets.token_hex(4);catalog=admin.call('dictionary_catalog');assert len(catalog['categories'])==9
+b=admin.login('admin',os.environ.get('ARKUSZ_TEST_PASSWORD',env['ADMIN_PASSWORD']));tag=secrets.token_hex(4);catalog=admin.call('dictionary_catalog');assert len(catalog['categories'])==10
 view=next(p['id'] for p in catalog['permissions'] if p['code']=='orders.view')
 created={}
 for category,definition in catalog['categories'].items():
@@ -70,4 +70,4 @@ item['components'][0]['paper_variant_id']=b['dictionaries']['paper_variants'][0]
 order=admin.call('create_order',{'customer_id':customer,'title':'TEST status '+tag,'items':[item]})['id']
 admin.call('order_status',{'id':order,'version':1,'status_id':custom['id']})
 assert next(o for o in admin.call('orders') if o['id']==order)['status_terminal']==1
-print('OK: 9 kategorii, dodawanie, edycja, aktywność, role, walidacja, CSRF, ochrona systemowych kodów, parametrów i administratora, blokada nieaktywnych papierów.')
+print('OK: 10 kategorii, dodawanie, edycja, aktywność, role, walidacja, CSRF, ochrona systemowych kodów, parametrów i administratora, blokada nieaktywnych papierów.')

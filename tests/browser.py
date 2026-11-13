@@ -105,7 +105,7 @@ async def main():
   await cmd('Emulation.setDeviceMetricsOverride',{'width':1440,'height':1000,'deviceScaleFactor':1,'mobile':False})
   await js("document.querySelector('[data-nav=dictionaries]').click()")
   await wait("!!document.querySelector('#add-dictionary')")
-  assert await js("document.querySelectorAll('.dictionary-nav a').length") == 9
+  assert await js("document.querySelectorAll('.dictionary-nav a').length") == 10
   await js("document.querySelector('.dictionary-nav a[href=\"#dictionaries/paper_types\"]').click()")
   await wait("document.querySelector('#breadcrumb').textContent==='Słowniki / Rodzaje papieru'")
   name='TEST Chrome papier '+secrets.token_hex(3)
@@ -127,7 +127,7 @@ async def main():
   # Preferencje wyglądu: podgląd, anulowanie, zapis i odtworzenie po odświeżeniu.
   await js("document.querySelector('#about-version').click()")
   await wait("document.querySelector('#modal').open")
-  assert await js("document.querySelector('#modal-body').textContent.includes('1.2.0') && /13\\.\\d+\\.\\d+/.test(document.querySelector('#modal-body').textContent) && /8\\.4\\.\\d+/.test(document.querySelector('#modal-body').textContent)")
+  assert await js("document.querySelector('#modal-body').textContent.includes('1.3.0') && /13\\.\\d+\\.\\d+/.test(document.querySelector('#modal-body').textContent) && /8\\.4\\.\\d+/.test(document.querySelector('#modal-body').textContent)")
   await js("document.querySelector('#modal').close()")
   original_theme=await js("state.data.user.theme")
   await cmd('Emulation.setDeviceMetricsOverride',{'width':1440,'height':1000,'deviceScaleFactor':1,'mobile':False})

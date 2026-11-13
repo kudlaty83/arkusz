@@ -60,6 +60,8 @@ require dirname(__DIR__).'/orders.php';
 require dirname(__DIR__).'/order-plan.php';
 require dirname(__DIR__).'/customers.php';
 require dirname(__DIR__).'/users.php';
+require dirname(__DIR__).'/tasks.php';
+require dirname(__DIR__).'/templates.php';
 function taskAccess(array $task): void {
  if(allowed('tasks.manage')) return;
  if(!one('SELECT 1 FROM task_assignments WHERE task_id=? AND user_id=?',[$task['id'],$_SESSION['uid']])) fail('Możesz raportować tylko przydzielone zadania.',403);
@@ -102,7 +104,7 @@ try {
  }
  if($action==='bootstrap' && $method==='GET') {
   permit('orders.view');
-  $dict=[]; foreach(['product_types','paper_types','paper_variants','order_statuses','work_centers','operation_types','feature_types','feature_parameter_definitions','roles'] as $table) $dict[$table]=rows("SELECT * FROM $table".($table==='order_statuses'?' ORDER BY sort_order,id':' ORDER BY id'));
+  $dict=[]; foreach(['component_types','product_types','paper_types','paper_variants','order_statuses','work_centers','operation_types','feature_types','feature_parameter_definitions','roles'] as $table) $dict[$table]=rows("SELECT * FROM $table".($table==='order_statuses'?' ORDER BY sort_order,id':' ORDER BY id'));
   output(['versions'=>versionInfo(),'user'=>$user,'permissions'=>$_SESSION['permissions'],'csrf'=>$_SESSION['csrf'],'dictionaries'=>$dict,
    'users'=>rows('SELECT u.id,u.display_name,u.login,GROUP_CONCAT(r.name SEPARATOR ", ") roles FROM users u LEFT JOIN user_roles ur ON ur.user_id=u.id LEFT JOIN roles r ON r.id=ur.role_id WHERE u.is_active=1 GROUP BY u.id,u.display_name,u.login'),
    'memberships'=>rows('SELECT * FROM user_work_centers')]);
@@ -116,7 +118,7 @@ try {
  }
  if($action==='tasks' && $method==='GET') {
   permit('orders.view');
-  output(rows("SELECT t.*,i.name item_name,o.id order_id,o.order_number,o.title order_title,w.name center_name,c.name component_name,
+  output(rows("SELECT t.*,i.is_archived item_archived,c.is_archived component_archived,i.name item_name,o.id order_id,o.order_number,o.title order_title,w.name center_name,c.name component_name,
    (SELECT GROUP_CONCAT(u.display_name SEPARATOR ', ') FROM task_assignments a JOIN users u ON u.id=a.user_id WHERE a.task_id=t.id) assignees,
    (SELECT GROUP_CONCAT(a.user_id) FROM task_assignments a WHERE a.task_id=t.id) assignee_ids,
    (SELECT COALESCE(SUM(r.good_quantity),0) FROM production_reports r WHERE r.task_id=t.id AND r.plan_revision=t.plan_revision) good_quantity,
@@ -137,7 +139,8 @@ try {
   output(['order'=>$order,'items'=>$items,
    'changes'=>array_map(static function($change){$change['changes']=json_decode($change['changes'],true,512,JSON_THROW_ON_ERROR);return $change;},rows('SELECT h.id,h.changed_at,h.changes,u.display_name FROM order_change_history h JOIN users u ON u.id=h.changed_by WHERE h.order_id=? ORDER BY h.id DESC',[$order['id']])),
    'history'=>rows('SELECT h.*,s.name status_name,u.display_name FROM order_status_history h JOIN order_statuses s ON s.id=h.new_status_id JOIN users u ON u.id=h.changed_by WHERE h.order_id=? ORDER BY h.id DESC',[$order['id']]),
-   'reports'=>rows('SELECT r.*,t.operation_name,u.display_name FROM production_reports r JOIN production_tasks t ON t.id=r.task_id JOIN order_items i ON i.id=t.order_item_id JOIN users u ON u.id=r.reported_by WHERE i.order_id=? ORDER BY r.id DESC',[$order['id']]),
+   'task_changes'=>array_map(static function($c){$c['changes']=json_decode($c['changes'],true,512,JSON_THROW_ON_ERROR);return $c;},rows('SELECT h.id,h.changed_at,h.changes,t.operation_name,u.display_name FROM task_plan_changes h JOIN production_tasks t ON t.id=h.task_id JOIN order_items i ON i.id=t.order_item_id JOIN users u ON u.id=h.changed_by WHERE i.order_id=? ORDER BY h.id DESC',[$order['id']])),
+   'reports'=>productionReportsForOrder((int)$order['id']),
    'task_history'=>rows('SELECT h.*,t.operation_name,u.display_name FROM task_status_history h JOIN production_tasks t ON t.id=h.task_id JOIN order_items i ON i.id=t.order_item_id JOIN users u ON u.id=h.changed_by WHERE i.order_id=? ORDER BY h.id DESC',[$order['id']])]);
  }
  if($action==='customers' && $method==='GET')output(customerPage($_GET));
@@ -159,21 +162,14 @@ try {
   run('UPDATE orders SET status_id=?,completed_at=?,version=version+1 WHERE id=?',[$s['id'],(in_array($s['code'],['ready','delivered'],true)||($s['is_terminal']&&$s['code']!=='cancelled'))?gmdate('Y-m-d H:i:s'):null,$id]);
   insert('order_status_history',['order_id'=>$id,'old_status_id'=>$o['status_id'],'new_status_id'=>$s['id'],'changed_by'=>$user['id'],'reason'=>text($data,'reason',5000,false)]);db()->commit();output(['ok'=>true]);
  }
- if($action==='create_task' && $method==='POST') {
-  permit('tasks.manage');db()->beginTransaction();
-  $item=reference('order_items',integer($data,'order_item_id'));
-  one('SELECT id FROM orders WHERE id=? FOR UPDATE',[$item['order_id']]);
-  $item=one('SELECT * FROM order_items WHERE id=? FOR UPDATE',[$item['id']])??fail('Brak produktu.',404);
-  if((int)$item['is_archived'])fail('Produkt został usunięty z bieżącej specyfikacji.');
-  $component=!empty($data['component_id'])?(one('SELECT * FROM item_components WHERE id=? FOR UPDATE',[integer($data,'component_id')])??fail('Brak części.',404)):null;
-  if($component&&((int)$component['is_archived']||(int)$component['order_item_id']!==(int)$item['id']))fail('Część nie należy do produktu.');
-  $op=activeReference('operation_types',integer($data,'operation_type_id'));$center=activeReference('work_centers',integer($data,'work_center_id'));
-  $task=insert('production_tasks',['order_item_id'=>$item['id'],'component_id'=>$component['id']??null,'operation_type_id'=>$op['id'],'operation_name'=>$op['name'],'sequence_number'=>integer($data,'sequence_number',1,65535),'status'=>'pending','work_center_id'=>$center['id'],'planned_quantity'=>integer($data,'planned_quantity'),'quantity_unit'=>text($data,'quantity_unit',30),'due_at'=>reference('orders',(int)$item['order_id'])['due_at'],'instructions'=>text($data,'instructions',10000,false)]);
-  foreach(array_unique($data['depends_on']??[]) as $dep){ $parent=reference('production_tasks',(int)$dep);if((int)$parent['order_item_id']!==(int)$item['id'])fail('Poprzednik musi należeć do tego samego produktu.');insert('task_dependencies',['task_id'=>$task,'depends_on_task_id'=>$parent['id']]); }
-  foreach(['item','component'] as $scope) foreach(array_unique($data[$scope.'_feature_ids']??[]) as $fid){ $f=reference($scope.'_features',(int)$fid);if((int)$f['is_archived'])fail('Cecha została usunięta.'); if($scope==='item'&&(int)$f['order_item_id']!==(int)$item['id'])fail('Cecha innego produktu.');if($scope==='component'&&(!$component||(int)$f['component_id']!==(int)$component['id']))fail('Cecha innej części.');insert('task_'.$scope.'_features',['task_id'=>$task,$scope.'_feature_id'=>$fid]); }
-  foreach(array_unique($data['assignee_ids']??[]) as $uid){ if(!one('SELECT u.id FROM users u JOIN user_work_centers c ON c.user_id=u.id WHERE u.id=? AND u.is_active=1 AND c.work_center_id=?',[(int)$uid,$center['id']]))fail('Pracownik nie jest przypisany do tego stanowiska.');insert('task_assignments',['task_id'=>$task,'user_id'=>(int)$uid,'assigned_by'=>$user['id']]); }
-  insert('task_status_history',['task_id'=>$task,'new_status'=>'pending','event_type'=>'created','changed_by'=>$user['id'],'reason'=>'Utworzenie zadania i przydział wykonawców']);db()->commit();output(['id'=>$task]);
+ if($action==='task' && $method==='GET'){permit('tasks.manage');output(taskDetails(integer($_GET,'id')));}
+ if(in_array($action,['create_task','update_task','preview_task_update'],true) && $method==='POST'){
+  $result=saveTask($data,(int)$user['id'],$action!=='create_task',$action==='preview_task_update');output(is_array($result)?$result:['id'=>$result]);
  }
+ if($action==='templates' && $method==='GET')output(templatePage($_GET));
+ if($action==='template' && $method==='GET'){permit('tasks.manage');output(templateDetails(integer($_GET,'id')));}
+ if($action==='save_template' && $method==='POST')output(['id'=>saveTemplate($data,(int)$user['id'])]);
+ if(in_array($action,['preview_apply_template','apply_template'],true) && $method==='POST')output(applyTemplate($data,(int)$user['id'],$action==='preview_apply_template'));
  if($action==='assign_task' && $method==='POST'){
   permit('tasks.manage');db()->beginTransaction();$t=one('SELECT * FROM production_tasks WHERE id=? FOR UPDATE',[integer($data,'id')])??fail('Brak zadania.',404);
   if((int)$t['version']!==integer($data,'version'))fail('Zadanie zmieniono. Odśwież widok.',409);

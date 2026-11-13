@@ -11,6 +11,7 @@ function dictionaryDefinitions(): array {
  return [
   'paper_types'=>['name'=>'Rodzaje papieru','description'=>'Grupy papierów, np. offsetowy, kreda, karton.','fields'=>[$name(),$description,$active]],
   'paper_variants'=>['name'=>'Papiery i gramatury','description'=>'Konkretne papiery dostępne przy opisywaniu części produktu.','fields'=>[$name(200),$ref('paper_type_id','Rodzaj papieru','paper_types'),['key'=>'grammage_gsm','label'=>'Gramatura (g/m²)','type'=>'integer','required'=>true,'min'=>1,'max'=>65535],['key'=>'manufacturer','label'=>'Producent','type'=>'text','max'=>150],['key'=>'color','label'=>'Kolor papieru','type'=>'text','max'=>100],$description,$active]],
+  'component_types'=>['name'=>'Rodzaje części','description'=>'Klasyfikacja części, do których przypisuje się typowe etapy produkcji.','fields'=>[$name(),$code,$description,$active]],
   'product_types'=>['name'=>'Rodzaje produktów','description'=>'Wizytówki, książki, ulotki i pozostałe produkty drukarni.','fields'=>[$name(100),$code,$active]],
   'roles'=>['name'=>'Role i uprawnienia','description'=>'Funkcje pracowników oraz dostęp do operacji aplikacji. Rola administratora zachowuje pełny dostęp.','fields'=>[$name(100),$code,['key'=>'permission_ids','label'=>'Uprawnienia','type'=>'permissions']]],
   'work_centers'=>['name'=>'Stanowiska pracy','description'=>'Działy i stanowiska, do których trafiają zadania produkcyjne.','fields'=>[$name(),$code,$active]],

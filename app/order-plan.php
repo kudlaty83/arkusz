@@ -29,7 +29,7 @@ function buildOrderPlan(array $s,array $data): array {
   $changed=[];
   foreach($labels as $key=>$name)if(array_key_exists($key,$new)&&planValue($old[$key]??null)!==planValue($new[$key])){
    $display=static function(mixed $v)use($key):string{
-    $table=['paper_variant_id'=>'paper_variants','product_type_id'=>'product_types','customer_id'=>'customers'][$key]??null;
+    $table=['paper_variant_id'=>'paper_variants','product_type_id'=>'product_types','customer_id'=>'customers','component_type_id'=>'component_types'][$key]??null;
     return $table&&$v?reference($table,(int)$v)['name'].' (#'.$v.')':(planValue($v)?:'brak');
    };
    $changes[]=$label.' — '.$name.': '.$display($old[$key]??null).' → '.$display($new[$key]);$changed[]=$key;
@@ -65,10 +65,10 @@ function buildOrderPlan(array $s,array $data): array {
   foreach(($item['components']??[]) as $c){
    if(!isset($c['id'])){$changes[]='Dodanie części '.$c['name'].' — zaplanuj potrzebne zadania i wykonawców.';continue;}
    $cid=integer($c,'id');$components[$cid]=$c;$oldC=$oldComponents[$cid]??fail('Część nie należy do zamówienia.');
-   $changed=$fields($oldC,$c,['name'=>'nazwa','page_count'=>'liczba stron','paper_variant_id'=>'papier','print_technique'=>'technika druku','offset_front_colors'=>'kolory awersu','offset_back_colors'=>'kolory rewersu','digital_front_mode'=>'tryb awersu','digital_back_mode'=>'tryb rewersu','bleed_mm'=>'spad','notes'=>'informacje'],'Część '.$oldC['name']);
+   $changed=$fields($oldC,$c,['name'=>'nazwa','component_type_id'=>'rodzaj części','page_count'=>'liczba stron','paper_variant_id'=>'papier','print_technique'=>'technika druku','offset_front_colors'=>'kolory awersu','offset_back_colors'=>'kolory rewersu','digital_front_mode'=>'tryb awersu','digital_back_mode'=>'tryb rewersu','bleed_mm'=>'spad','notes'=>'informacje'],'Część '.$oldC['name']);
    $inks=[];foreach(['front','back'] as $side){$inks[$side]=array_values(array_map(fn($k)=>$k['ink_name'],array_filter($s['inks'],fn($k)=>(int)$k['component_id']===$cid&&$k['side']===$side)));}
    if($c['print_technique']==='offset'&&($inks['front']!==($c['front_inks']??[])||$inks['back']!==($c['back_inks']??[]))){$changed[]='inks';$changes[]='Część '.$oldC['name'].' — farby: '.json_encode($inks,JSON_UNESCAPED_UNICODE).' → '.json_encode(['front'=>$c['front_inks']??[],'back'=>$c['back_inks']??[]],JSON_UNESCAPED_UNICODE);}
-   if(array_diff($changed,['name','notes']))$affect($iid,$cid,'Zmiana specyfikacji części '.$oldC['name'],true);
+   if(array_diff($changed,['name','notes','component_type_id']))$affect($iid,$cid,'Zmiana specyfikacji części '.$oldC['name'],true);
    if(in_array('notes',$changed,true))$affect($iid,$cid,'Zmiana informacji do części '.$oldC['name']);
    $featureChanges('component',$cid,$c['features']??[]);
   }

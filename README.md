@@ -1,10 +1,10 @@
-# Arkusz 1.2 — obsługa drukarni
+# Arkusz 1.3 — obsługa drukarni
 
 Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pracy drukarni: od ustaleń z klientem, przez przygotowalnię i druk, po introligatornię i wydanie. Interfejs jest w języku polskim. Aplikacja działa jako strona internetowa i może być instalowana w Chrome jako PWA.
 
 **Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
 
-Aktualna wersja testowa: **1.2.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.2**. Schemat bazy: **rewizja 4**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
+Aktualna wersja testowa: **1.3.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.3**. Schemat bazy: **rewizja 5**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
 **Instalacja, pierwsze logowanie, kopie zapasowe i aktualizacje: [install.md](install.md).**
 
@@ -43,6 +43,26 @@ Parametry mogą być tekstem, liczbą z jednostką lub wyborem tak/nie. Katalog 
 
 Pracownik produkcyjny raportuje wyłącznie przydzielone mu zadania. BOK i kierownik planują produkcję. Administrator zarządza kontami, rolami i uprawnieniami.
 
+## Edycja etapów produkcji
+
+Przycisk **Edytuj etap** w karcie zamówienia lub na tablicy produkcji pozwala zmienić operację, zakres części w obrębie tego samego produktu, stanowisko, kolejność na liście, ilość, jednostkę, planowane daty, parametry, instrukcje, wykonawców, realizowane cechy i poprzedników. Zależności nie mogą tworzyć cykli; numer kolejności na liście sam nie tworzy zależności. Status wykonania nadal zmienia się przez raport pracy.
+
+Zapis wymaga podglądu i osobnego zatwierdzenia. Edycja operacji, części, jednostki, parametrów lub cech tworzy nową rewizję: etap i jego nieanulowani następnicy są wstrzymywani, a wykonanie nowej specyfikacji liczy się od zera. Same instrukcje i daty nie zerują wykonania. Zwiększenie ilości zakończonego etapu powyżej wykonania otwiera go ponownie z zachowaniem dobrych sztuk; dalsze etapy wymagają weryfikacji. Wznowione zadania przywracają gotowe lub zamknięte zamówienie do produkcji.
+
+Raporty pozostają niezmienne; ich nazwa operacji i jednostka są odtwarzane z zachowanej migawki sprzed edycji, więc nie zmieniają znaczenia wraz z aktualnym etapem. Historia zamówienia pokazuje zatwierdzone edycje etapów, a dziennik zadań obejmuje wszystkie dotknięte etapy. Raport lub inna zmiana planu po podglądzie wymaga ponownego potwierdzenia. Anulowanych etapów i etapów wycofanych elementów nie edytuje się — pozostają w historii.
+
+## Typowe etapy dla części
+
+W **Słowniki → Rodzaje części** administrator definiuje np. okładkę, środek i wkładkę. Rodzaj wybiera się przy edycji części zamówienia; starsze części zachowują pusty rodzaj do samodzielnego przypisania. Zmiana tej klasyfikacji nie przelicza istniejących zadań.
+
+Osoby z uprawnieniem do planowania produkcji korzystają z menu **Szablony etapów**. Szablon dotyczy jednego rodzaju części, opcjonalnie konkretnego rodzaju produktu i techniki druku. Ma nazwę, opis, aktywność i uporządkowane etapy. Każdy etap określa operację, stanowisko, jednostkę, parametry, instrukcje, liczbę dni przed terminem zamówienia i ewentualną zależność od poprzedniego etapu szablonu.
+
+Ilość etapu jest stała albo wynika ze współczynnika pomnożonego przez nakład produktu, z zaokrągleniem w górę. Przykładowo współczynnik 1,25 przy nakładzie 10 daje 13 jednostek. Współczynnik nie jest automatyczną kalkulacją arkuszy z formatu lub liczby stron — ustala go planista.
+
+W karcie części przycisk **Typowe etapy** pokazuje pasujące szablony. Można wskazać poprzednik pierwszego etapu oraz wykonawców poszczególnych etapów albo przydzielić ich później. Podsumowanie pokazuje ilości, terminy UTC, stanowiska i zależności. Po zatwierdzeniu etapy są dodawane w jednej transakcji, bez zastępowania istniejącego planu. Ten sam szablon można zastosować do tej samej części tylko raz; później edytuje się utworzone etapy.
+
+Aktualizacja szablonu nie przepisuje wcześniejszych zadań. Zastosowanie zachowuje migawkę szablonu i jego wersję. Lista szablonów ma wyszukiwanie, filtr aktywności i paginację; wybór przy części pobiera po 10 wyników.
+
 ## Konta i hasła
 
 W zakładce **Zespół** administrator dodaje i edytuje pracowników: login, imię i nazwisko, role, stanowiska oraz aktywność. Konta można wyszukiwać i przeglądać stronami; administrator widzi również nieaktywne konta. Wyłączenie konta zachowuje zadania, przydziały i raporty, a blokuje dostęp. Nie można wyłączyć własnego konta ani odebrać roli ostatniemu aktywnemu administratorowi. Zapis wykrywa równoczesną edycję konta.
@@ -59,7 +79,7 @@ Po zatwierdzeniu aplikacja stosuje następujące reguły:
 - Zmiana terminu przesuwa terminy i planowane rozpoczęcia niezakończonych zadań o tę samą różnicę czasu, zachowując odstępy. Przy pierwszym nadaniu terminu zadania otrzymują termin zamówienia; jego usunięcie usuwa terminy zadań. Daty faktycznego wykonania pozostają historyczne.
 - Zmiana parametrów technologicznych produktu, części lub powiązanej cechy wstrzymuje dotknięte zadania i etapy zależne oraz tworzy nową rewizję ich planu. Dotyczy także zadań zakończonych: wykonanie nowej specyfikacji liczy się od zera, a wcześniejsze raporty pozostają w historii. Same uwagi nie zerują wykonania. Zamówienie gotowe lub zamknięte, w którym wznowiono zadania, wraca do produkcji.
 - Usunięcie produktu, części lub powiązanej cechy anuluje niezakończone zadania objęte zmianą i niezakończonych następców. Usunięcie części obejmuje również zadania całego produktu. Zadania zakończone i raporty pozostają w historii. Zmiana rodzaju cechy zachowuje jej dawny rekord i przenosi powiązanie zadania do nowej specyfikacji.
-- Nowe produkty, części i cechy wymagają doboru operacji, stanowisk i wykonawców w karcie zamówienia; aplikacja informuje o tym w podsumowaniu. Nie dobiera automatycznie technologii produkcji.
+- Nowe produkty i cechy wymagają doboru operacji, stanowisk i wykonawców w karcie zamówienia; dla części można skorzystać z szablonu; aplikacja informuje o tym w podsumowaniu. Nie dobiera automatycznie technologii produkcji.
 
 Zmiana planu lub raport po podglądzie wymaga ponownego podsumowania i potwierdzenia. Zatwierdzone zmiany są widoczne w historii zamówienia i dzienniku zadań. Użytkownik zmieniający plan potrzebuje uprawnienia do planowania pracy.
 
@@ -67,10 +87,10 @@ Dane klienta, papieru i rodzaju produktu są zapisywane w zamówieniu jako migaw
 
 ## Słowniki
 
-Edytor **Słowniki** obejmuje dziewięć kategorii:
+Edytor **Słowniki** obejmuje dziesięć kategorii:
 
 - Rodzaje papieru oraz papiery i gramatury.
-- Rodzaje produktów.
+- Rodzaje produktów i rodzaje części.
 - Role i uprawnienia.
 - Stanowiska pracy.
 - Operacje produkcyjne.
@@ -90,7 +110,7 @@ Interfejs dostosowuje się do mniejszych ekranów. **Aplikację można zainstalo
 
 HTML, CSS i JavaScript bez frameworka, procesu budowania frontendu, bibliotek npm/Composer, CDN i zewnętrznych fontów. Backend i API: PHP **8.4.x** (`php:8.4-apache`). Baza: MariaDB **13.x** (`mariadb:13`). Pliki aplikacji, konfiguracja, sesje i dane bazy znajdują się w oddzielnych podkatalogach `app_data` na dysku hosta; Compose używa bind mountów zamiast nazwanych wolumenów. Kompletny schemat znajduje się w [baza.sql](baza.sql). Aplikacja korzysta z sesji, ochrony CSRF i uprawnień sprawdzanych przez API.
 
-Nie zaimplementowano przesyłania i akceptacji plików, magazynu, kalkulacji kosztów, fakturowania, obsługi wysyłek, korekt raportów ani osobnego edytora planowanej ilości pojedynczego zadania poza przeliczaniem przy zmianie nakładu zamówienia. Akceptację można obecnie zaplanować jako zadanie. Dane plików mają przygotowaną tabelę w schemacie, ale nie mają jeszcze interfejsu. Aplikacja nie jest systemem księgowym.
+Nie zaimplementowano przesyłania i akceptacji plików, magazynu, kalkulacji kosztów, fakturowania, obsługi wysyłek, korekt raportów ani automatycznej kalkulacji technologii produkcji z formatu i liczby stron. Akceptację można obecnie zaplanować jako zadanie. Dane plików mają przygotowaną tabelę w schemacie, ale nie mają jeszcze interfejsu. Aplikacja nie jest systemem księgowym.
 
 ## Licencja i pochodzenie kodu
 

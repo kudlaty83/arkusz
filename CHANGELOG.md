@@ -2,6 +2,20 @@
 
 **Arkusz jest aplikacją testową i prototypową, powstałą w większości z użyciem generatywnej AI. Nie jest kompletnym programem dla drukarni. Projekt stanowi zaproszenie do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju; numer 1.0.0 nie oznacza gotowości produkcyjnej.**
 
+## 1.3.0 — 2026-11-13
+
+Wydanie testowe. Program: **1.3.0**; API: **1.3**; schemat: **rewizja 5**. Obrazy: PHP `8.4-apache`, MariaDB `13`.
+
+- Edycja etapów produkcji: operacja, część, stanowisko, ilość i jednostka, kolejność, daty, parametry, instrukcje, wykonawcy, cechy i poprzednicy. Serwerowy podgląd i osobne potwierdzenie; ochrona wersji i pełny audyt zmian.
+- Kontrola cykli oraz przynależności części, cech, poprzedników i wykonawców. Zmiana technologiczna tworzy rewizję i wstrzymuje etap oraz następców. Zwiększenie ilości zakończonego etapu otwiera go z zachowaniem wykonania. Starsze raporty zachowują nazwy operacji i jednostki na podstawie migawek sprzed edycji. Zmiany planu lub raport po podglądzie unieważniają zgodę.
+- Słownik rodzajów części, z początkowymi wpisami Okładka, Środek, Wkładka i Całość. Istniejące części pozostają bez przypisanego rodzaju; jego wybór nie zmienia dotychczasowego planu.
+- Menu Szablony etapów dla planistów: wersjonowane szablony rodzaju części, z opcjonalnym ograniczeniem produktu i techniki druku; do 100 etapów, stałe ilości lub współczynniki nakładu, terminy względem zamówienia, instrukcje, parametry i zależności.
+- Zastosowanie szablonu w karcie części po podglądzie, z wyborem wykonawców i poprzednika pierwszego etapu. Zapis atomowy, migawka użytej wersji, blokada ponownego zastosowania tego samego szablonu do tej samej części. Zmiana szablonu nie zmienia istniejących zadań. Listy szablonów są stronicowane.
+- Migracja `0005_production_templates.php`: pięć nowych tabel, opcjonalny rodzaj części, źródło szablonu w zadaniu i klucze obce. Zachowuje wszystkie dotychczasowe rekordy i raporty; wcześniejsze migracje pozostają niezmienione.
+- API: `GET task`, `POST preview_task_update` / `update_task`; `GET templates` / `template`, `POST save_template`, `preview_apply_template` / `apply_template`. Potwierdzenia wiążą treść i aktualny plan, są jednorazowe i ważne 15 minut. Dotychczasowe tworzenie i raportowanie zadań pozostaje dostępne.
+
+Aktualizacja z 1.2.0: wykonaj kopię bazy i konfiguracji, zatrzymaj WWW, przebuduj obraz i uruchom Compose według `install.md`. W razie wycofania odtwórz zweryfikowaną kopię bazy i konfiguracji wraz ze źródłami poprzedniego wydania; nie uruchamiaj starszej aplikacji na schemacie 5.
+
 ## 1.2.0 — 2026-11-13
 
 Wydanie testowe. Program: **1.2.0**; API: **1.2**; schemat: **rewizja 4**. Obrazy: PHP `8.4-apache`, MariaDB `13`.

@@ -31,7 +31,7 @@ services:
     environment:
       APP_DATA_HOST_PATH: ${APP_DATA_DIR:-${PWD:?Ustaw APP_DATA_DIR na bezwzgledna sciezke}/app_data}
   db:
-    image: docker.io/library/mariadb:13.0.2
+    image: docker.io/library/mariadb:13
     restart: unless-stopped
     depends_on:
       setup:

@@ -1,6 +1,6 @@
 # Przegląd zgodności z AGPL-3.0-only
 
-Data: 2026-11-13. Zakres: źródła Arkusza, konfiguracja budowania oraz odczyt faktycznie używanych obrazów PHP 8.4.27/Apache i MariaDB 13.0.2.
+Data: 2026-11-13. Raport dotyczy wskazanych poniżej, sprawdzonych obrazów. Konfiguracja obecnie śledzi ruchome tagi `php:8.4-apache` i `mariadb:13`; raport nie stanowi audytu przyszłych aktualizacji tych obrazów. Zakres: źródła Arkusza, konfiguracja budowania oraz odczyt faktycznie używanych obrazów PHP 8.4.27/Apache i MariaDB 13.0.2.
 
 **Wniosek:** w sprawdzonym zakresie nie znaleziono zależności blokującej udostępnianie własnego kodu Arkusza na AGPL-3.0-only. Wniosek dotyczy tej architektury i obecnych zależności, nie prawa do przelicencjonowania całych obrazów systemowych ani pełnego audytu prawnego ich wszystkich pakietów.
 

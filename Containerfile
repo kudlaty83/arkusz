@@ -1,4 +1,4 @@
-FROM docker.io/library/php:8.4.27-apache
+FROM docker.io/library/php:8.4-apache
 RUN docker-php-ext-install pdo_mysql
 COPY app/ /var/www/
 COPY baza.sql /var/www/baza.sql

@@ -203,13 +203,24 @@ docker compose up -d --build --wait
 
 Przed każdą aktualizacją wykonaj obie kopie zapasowe, sprawdź ich odtwarzanie i przeczytaj CHANGELOG. Migracje są sprawdzane przy każdym starcie; stosowane są wyłącznie brakujące, w ustalonej kolejności. Baza zapisuje ich numery, sumy kontrolne i status. Niezgodność, starszy program lub przerwana migracja blokują start — nie usuwaj rejestru i nie kasuj danych, aby obejść blokadę. MariaDB może zatwierdzać DDL poza transakcją, więc przy nieudanej migracji potrzebna jest kontrolowana naprawa lub odtworzenie kopii, nie automatyczne cofnięcie SQL. Procedura dla opiekuna: RELEASING.md.
 
-Wydanie 1.0.0 przypina obrazy **`php:8.4.27-apache`** i **`mariadb:13.0.2`**. Nie używamy `latest`. MariaDB 13.0.2 jest wydaniem stabilnym GA w linii rolling (nie LTS); 13.1.1 RC nie jest wybierane. Źródła wersji: [obrazy PHP](https://github.com/docker-library/php/blob/master/versions.json) i [wydanie MariaDB](https://mariadb.com/docs/release-notes/community-server/13.0/13.0.2).
+Obrazy śledzą gałęzie **`php:8.4-apache`** (PHP 8.4.x) i **`mariadb:13`** (MariaDB 13.x). Nie używamy `latest` ani tagów RC. Są to tagi ruchome: kolejne pobranie może dostarczyć nowszą wersję w wybranej linii, a MariaDB także nowszą podgałąź 13.x. Nie oznacza to przypięcia do LTS. Faktyczne wersje uruchomionych silników pokazuje aplikacja. Źródła tagów: [oficjalny obraz PHP](https://github.com/docker-library/official-images/blob/master/library/php) i [oficjalny obraz MariaDB](https://github.com/docker-library/official-images/blob/master/library/mariadb).
+
+Aby podczas aktualizacji pobrać bieżące obrazy tych gałęzi (po wykonaniu kopii i sprawdzeniu aktualizacji na osobnej instalacji):
+
+```sh
+docker compose stop web
+docker compose pull db
+docker compose build --pull
+docker compose up -d --wait
+```
+
+Samo `up --build` może wykorzystać lokalnie zapisany obraz bazowy. Aktualizacja silników nie zmienia numeru aplikacji ani rewizji jej schematu.
 
 Aktualizację wersji silnika wprowadza nowe, przetestowane wydanie programu. Nie podmieniaj samodzielnie tagu bazy na nowszy ani starszy na tym samym katalogu danych. Aktualizacja struktury aplikacji i aktualizacja silnika to odrębne operacje. Same poprawki obrazu pod tym samym tagiem również sprawdź na kopii przed odtworzeniem usług.
 
 ### Pierwsze przejście z wcześniejszych wersji do 1.0
 
-Zachowaj `app_data` i zrób kopię bazy oraz konfiguracji według instrukcji powyżej. Zatrzymaj WWW, pobierz źródła wydania 1.0 i uruchom aktualizację podaną wyżej. Migracja `0001_baseline.php` sprawdza istniejący schemat, uzupełnia dawną preferencję motywu w razie potrzeby i rejestruje wersjonowany schemat 1. Nie usuwa zamówień, kont ani raportów. Lokalna wcześniejsza baza używająca `latest` działała już na MariaDB 13.0.2, więc przypięcie tego samego wydania nie zmienia głównej wersji silnika. Dla innej wcześniejszej wersji MariaDB najpierw zaplanuj osobną migrację silnika na kopii.
+Zachowaj `app_data` i zrób kopię bazy oraz konfiguracji według instrukcji powyżej. Zatrzymaj WWW, pobierz źródła wydania 1.0 i uruchom aktualizację podaną wyżej. Migracja `0001_baseline.php` sprawdza istniejący schemat, uzupełnia dawną preferencję motywu w razie potrzeby i rejestruje wersjonowany schemat 1. Nie usuwa zamówień, kont ani raportów. Lokalna wcześniejsza baza używająca `latest` działała już na MariaDB 13.0.2, więc wybór gałęzi 13 zachowuje główną wersję silnika, ale kolejne pobrania mogą zmienić jego podgałąź. Dla innej wcześniejszej wersji MariaDB najpierw zaplanuj osobną migrację silnika na kopii.
 
 ### Kontrola wersji i migracji
 

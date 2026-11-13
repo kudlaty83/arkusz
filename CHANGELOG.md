@@ -4,6 +4,8 @@
 
 ## Niewydane
 
+- Obrazy kontenerów śledzą teraz PHP 8.4.x (`php:8.4-apache`) i MariaDB 13.x (`mariadb:13`), zamiast konkretnych wersji poprawkowych. Zaktualizowano testy wersji i instrukcję pobierania obrazów; schemat bazy i wersja aplikacji pozostają bez zmian.
+
 - Doprecyzowano testowy charakter projektu, udział AI i przeznaczenie do dalszego rozwoju.
 - Uzupełniono opis instalacji PWA na telefonach z Androidem i iPhone’ach.
 

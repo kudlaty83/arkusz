@@ -37,7 +37,7 @@ fingerprints=compose('exec','-T','web','php','-r',"foreach(['admin-password','db
 client=Client();boot=client.login(password);assert len(boot['dictionaries']['paper_variants'])>=10
 versions=client.call('version');assert versions['application']['version']=='1.0.0' and versions['application']['api_version']=='1.0'
 assert versions['database']['schema_version']==1 and versions['database']['schema_release']=='1.0.0'
-assert versions['runtime']['php']=='8.4.27' and versions['database']['server_version'].startswith('13.0.2-')
+assert versions['runtime']['php'].startswith('8.4.') and versions['database']['server_version'].startswith('13.')
 demo_count=len([o for o in client.call('orders') if o['order_number']=='DEMO/001'])
 assert demo_count==0
 customer=client.call('customer',{'name':'TEST Compose'})['id']

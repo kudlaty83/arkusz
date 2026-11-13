@@ -68,7 +68,7 @@ Interfejs dostosowuje się do mniejszych ekranów. **Aplikację można zainstalo
 
 ## Technologia i obecne ograniczenia
 
-HTML, CSS i JavaScript bez frameworka, procesu budowania frontendu, bibliotek npm/Composer, CDN i zewnętrznych fontów. Backend i API: PHP **8.4.27** (linia 8.4). Baza: MariaDB **13.0.2 Stable (GA)**. Pliki aplikacji, konfiguracja, sesje i dane bazy znajdują się w oddzielnych podkatalogach `app_data` na dysku hosta; Compose używa bind mountów zamiast nazwanych wolumenów. Kompletny schemat znajduje się w [baza.sql](baza.sql). Aplikacja korzysta z sesji, ochrony CSRF i uprawnień sprawdzanych przez API.
+HTML, CSS i JavaScript bez frameworka, procesu budowania frontendu, bibliotek npm/Composer, CDN i zewnętrznych fontów. Backend i API: PHP **8.4.x** (`php:8.4-apache`). Baza: MariaDB **13.x** (`mariadb:13`). Pliki aplikacji, konfiguracja, sesje i dane bazy znajdują się w oddzielnych podkatalogach `app_data` na dysku hosta; Compose używa bind mountów zamiast nazwanych wolumenów. Kompletny schemat znajduje się w [baza.sql](baza.sql). Aplikacja korzysta z sesji, ochrony CSRF i uprawnień sprawdzanych przez API.
 
 Nie zaimplementowano przesyłania i akceptacji plików, magazynu, kalkulacji kosztów, fakturowania, obsługi wysyłek, korekt raportów ani edycji planowanych ilości już istniejących zadań. Akceptację można obecnie zaplanować jako zadanie. Dane plików mają przygotowaną tabelę w schemacie, ale nie mają jeszcze interfejsu. Aplikacja nie jest systemem księgowym.
 

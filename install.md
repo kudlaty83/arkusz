@@ -1,6 +1,6 @@
 # Instalacja i aktualizacja Arkusza 1.4
 
-Instrukcja dla osoby uruchamiającej własną drukarnię w aplikacji. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
+Instrukcja instalacji i uruchomienia aplikacji do obsługi drukarni. Nie trzeba instalować PHP, MariaDB, Node.js ani Pythona na komputerze. Opis funkcji jest w [README.md](README.md).
 
 ## 1. Przygotuj komputer
 

@@ -2,7 +2,7 @@
 
 Arkusz to przeglądarkowa aplikacja do przyjmowania zamówień i organizacji pracy drukarni: od ustaleń z klientem, przez przygotowalnię i druk, po introligatornię i wydanie. Interfejs jest w języku polskim. Aplikacja działa jako strona internetowa i może być instalowana w Chrome jako PWA.
 
-**Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
+**Aplikacja ma charakter testowy i prototypowy. Powstała w większości z użyciem generatywnej AI i prawdopodobnie nie jest kompletnym, gotowym do wdrożenia programem dla drukarni.** Projekt jest przede wszystkim zaproszeniem do kontaktu, wymiany pomysłów i samodzielnego dalszego rozwoju.
 
 Aktualna wersja testowa: **1.4.0**. Numer wersji nie oznacza gotowości produkcyjnej. API: **1.4**. Schemat bazy: **rewizja 6**. Kolejne wydania aktualizują istniejącą instalację przez wersjonowane migracje, z zachowaniem danych.
 
